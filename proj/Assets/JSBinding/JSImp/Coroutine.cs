@@ -1,11 +1,11 @@
-using UnityEngine;
+﻿using UnityEngine;
 using System.Collections;
 using System;
 using SharpKit.JavaScript;
 
 namespace jsimp
 {
-[JsType(JsMode.Clr, "~/Assets/StreamingAssets/JavaScript/SharpKitGeneratedFiles.javascript")]
+[JsType(JsMode.Clr)]
     public class Coroutine
 	{
 		[JsMethod(Code = @"var elapsed = UnityEngine.Time.get_deltaTime();

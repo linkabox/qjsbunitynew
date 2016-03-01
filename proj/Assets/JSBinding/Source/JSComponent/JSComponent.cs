@@ -41,8 +41,6 @@ public class JSComponent : JSSerializer
 //     int idDestroyChildGameObject = 0;
 //     int idDisableChildGameObject = 0;
 //     int idDestroyGameObject = 0;
-    int idStartSinking = 0;
-    int idRestartLevel = 0;
     /// <summary>
     /// Initializes the member function.
     /// </summary>
@@ -66,8 +64,6 @@ public class JSComponent : JSSerializer
 //         idDestroyChildGameObject = JSApi.getObjFunction(jsObjID, "DestroyChildGameObject");
 //         idDisableChildGameObject = JSApi.getObjFunction(jsObjID, "DisableChildGameObject");
 //         idDestroyGameObject = JSApi.getObjFunction(jsObjID, "DestroyGameObject");
-        idStartSinking = JSApi.getObjFunction(jsObjID, "StartSinking");
-        idRestartLevel = JSApi.getObjFunction(jsObjID, "RestartLevel");
     }
     /// <summary>
     /// Removes if exist.
@@ -333,12 +329,4 @@ public class JSComponent : JSSerializer
 //     {
 //         callIfExist(idDestroyGameObject);
 //     }
-    void StartSinking()
-    {
-        callIfExist(idStartSinking);
-    }
-    void RestartLevel()
-    {
-        callIfExist(idRestartLevel);
-    }
 }

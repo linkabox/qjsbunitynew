@@ -85,16 +85,16 @@ public class JSComponentGenerator
 //      new Info("OnDestroy()"),
 
         // Performance killer
+        // 屏蔽生成以下相关事件的JSComponent派生类
+        // 包括：UGUI，Server，Animator,Editor相关MonoBehaviour事件
         new Info("Update()", "Update"),
         new Info("LateUpdate()", "Update"),
  
-        new Info("FixedUpdate()", "FixedUpdate_OnGUI"),
-        new Info("OnGUI()", "FixedUpdate_OnGUI"),
+        new Info("FixedUpdate()", "FUpdate"),
+        new Info("OnGUI()", "GUI"),
 
-        new Info("OnDisable()", "Enable_Visible"),
-        new Info("OnEnable()", "Enable_Visible"),
-        new Info("OnBecameInvisible()", "Enable_Visible"),
-        new Info("OnBecameVisible()", "Enable_Visible"),
+        new Info("OnDisable()", "Enable"),
+        new Info("OnEnable()", "Enable"),
 
         new Info("OnTransformChildrenChanged()", "TransChange"),
         new Info("OnTransformParentChanged()", "TransChange"),
@@ -102,54 +102,57 @@ public class JSComponentGenerator
         new Info("OnApplicationFocus(bool focusStatus)", "Application"),
         new Info("OnApplicationPause(bool pauseStatus)", "Application"),
         new Info("OnApplicationQuit()", "Application"),
-        new Info("OnAudioFilterRead(float[] data, int channels)", "Application"),
-        new Info("OnLevelWasLoaded(int level)", "Application"),
+        //new Info("OnAudioFilterRead(float[] data, int channels)", "Application"),
+        //new Info("OnLevelWasLoaded(int level)", "Application"),
 
-        new Info("OnAnimatorIK(int layerIndex)", "AnimatorIK_Move_JointBreak"),
-        new Info("OnAnimatorMove()", "AnimatorIK_Move_JointBreak"),
-        new Info("OnJointBreak(float breakForce)", "AnimatorIK_Move_JointBreak"),
+        //new Info("OnAnimatorIK(int layerIndex)", "AnimatorIK_Move_JointBreak"),
+        //new Info("OnAnimatorMove()", "AnimatorIK_Move_JointBreak"),
+        //new Info("OnJointBreak(float breakForce)", "AnimatorIK_Move_JointBreak"),
 
-        new Info("OnParticleCollision(GameObject other)", "Physics"),
         new Info("OnCollisionEnter(Collision collisionInfo)", "Physics"),
-        new Info("OnCollisionEnter2D(Collision2D coll)", "Physics"),
         new Info("OnCollisionExit(Collision collisionInfo)", "Physics"),
-        new Info("OnCollisionExit2D(Collision2D coll)", "Physics"),
         new Info("OnCollisionStay(Collision collisionInfo)", "Physics"),
-        new Info("OnCollisionStay2D(Collision2D coll)", "Physics"),
         new Info("OnTriggerEnter(Collider other)", "Physics"),
-        new Info("OnTriggerEnter2D(Collider2D other)", "Physics"),
         new Info("OnTriggerExit(Collider other)", "Physics"),
-        new Info("OnTriggerExit2D(Collider2D other)", "Physics"),
         new Info("OnTriggerStay(Collider other)", "Physics"),
-        new Info("OnTriggerStay2D(Collider2D other)", "Physics"),
         new Info("OnControllerColliderHit(ControllerColliderHit hit)", "Physics"),
+        //new Info("OnParticleCollision(GameObject other)", "Physics"),
 
-        new Info("OnConnectedToServer()", "Server"),
-        new Info("OnDisconnectedFromServer(NetworkDisconnection info)", "Server"),
-        new Info("OnFailedToConnect(NetworkConnectionError error)", "Server"),
-        new Info("OnFailedToConnectToMasterServer(NetworkConnectionError info)", "Server"),
-        new Info("OnMasterServerEvent(MasterServerEvent msEvent)", "Server"),
-        new Info("OnNetworkInstantiate(NetworkMessageInfo info)", "Server"),
-        new Info("OnPlayerConnected(NetworkPlayer player)", "Server"),
-        new Info("OnPlayerDisconnected(NetworkPlayer player)", "Server"),
-        new Info("OnSerializeNetworkView(BitStream stream, NetworkMessageInfo info)", "Server"),
-        new Info("OnServerInitialized()", "Server"),
+        //new Info("OnCollisionEnter2D(Collision2D coll)", "Physics2D"),
+        //new Info("OnCollisionExit2D(Collision2D coll)", "Physics2D"),
+        //new Info("OnCollisionStay2D(Collision2D coll)", "Physics2D"),
+        //new Info("OnTriggerEnter2D(Collider2D other)", "Physics2D"),
+        //new Info("OnTriggerExit2D(Collider2D other)", "Physics2D"),
+        //new Info("OnTriggerStay2D(Collider2D other)", "Physics2D"),
 
-        new Info("OnMouseDown()", "Mouse"),
-        new Info("OnMouseDrag()", "Mouse"),
-        new Info("OnMouseEnter()", "Mouse"),
-        new Info("OnMouseExit()", "Mouse"),
-        new Info("OnMouseOver()", "Mouse"),
-        new Info("OnMouseUp()", "Mouse"),
-        new Info("OnMouseUpAsButton()", "Mouse"),
+        //new Info("OnConnectedToServer()", "Server"),
+        //new Info("OnDisconnectedFromServer(NetworkDisconnection info)", "Server"),
+        //new Info("OnFailedToConnect(NetworkConnectionError error)", "Server"),
+        //new Info("OnFailedToConnectToMasterServer(NetworkConnectionError info)", "Server"),
+        //new Info("OnMasterServerEvent(MasterServerEvent msEvent)", "Server"),
+        //new Info("OnNetworkInstantiate(NetworkMessageInfo info)", "Server"),
+        //new Info("OnPlayerConnected(NetworkPlayer player)", "Server"),
+        //new Info("OnPlayerDisconnected(NetworkPlayer player)", "Server"),
+        //new Info("OnSerializeNetworkView(BitStream stream, NetworkMessageInfo info)", "Server"),
+        //new Info("OnServerInitialized()", "Server"),
+
+        //new Info("OnMouseDown()", "Mouse"),
+        //new Info("OnMouseDrag()", "Mouse"),
+        //new Info("OnMouseEnter()", "Mouse"),
+        //new Info("OnMouseExit()", "Mouse"),
+        //new Info("OnMouseOver()", "Mouse"),
+        //new Info("OnMouseUp()", "Mouse"),
+        //new Info("OnMouseUpAsButton()", "Mouse"),
 
         new Info("OnPostRender()", "Render"),
         new Info("OnPreCull()", "Render"),
         new Info("OnPreRender()", "Render"),
-        new Info("OnRenderImage(RenderTexture src, RenderTexture dest)", "Render"),
         new Info("OnRenderObject()", "Render"),
         new Info("OnWillRenderObject()", "Render"),
+        //new Info("OnRenderImage(RenderTexture src, RenderTexture dest)", "Render"),
 
+        new Info("OnBecameInvisible()", "Visible"),
+        new Info("OnBecameVisible()", "Visible"),
 
         // Editor only
         //
@@ -264,7 +267,7 @@ public class JSComponentGenerator
         return ret;
     }
 
-    //[MenuItem("JSB/Gen JSComopnents", false, 1000)]
+    [MenuItem("JSB/Others/Gen JSComopnents", false, 174)]
     public static void GenJSComponents()
     {
         //
@@ -289,44 +292,45 @@ public class JSComponent{0} : JSComponent
 {3}
 }}";
         // group ->  List<Info>
-        var dict = new Dictionary<string, List<Info>>();
+        var groupInfoDic = new Dictionary<string, List<Info>>();
         for (var i = 0; i < infos.Length; i++)
         {
             Info info = infos[i];
             List<Info> lst;
-            if (!dict.TryGetValue(info.group, out lst))
+            if (!groupInfoDic.TryGetValue(info.group, out lst))
             {
-                lst = dict[info.group] = new List<Info>();
+                lst = groupInfoDic[info.group] = new List<Info>();
             }
             lst.Add(info);
         }
 
         // index -> group
-        int ind = 0;
-        var dict2 = new Dictionary<int, string>();
-        foreach (var d in dict)
+        int index = 0;
+        var iToGroupKeyDic = new Dictionary<int, string>();
+        foreach (var d in groupInfoDic)
         {
-            dict2[ind++] = d.Key;
+            iToGroupKeyDic[index++] = d.Key;
         }
 
         // arr: 0,1,2,...N
-        int N = dict.Count;
-        int[] arr = new int[N];
-        for (var i = 0; i < N; i++)
+        int groupCount = groupInfoDic.Count;
+        int[] groupIndexs = new int[groupCount];
+        for (var i = 0; i < groupCount; i++)
         {
-            arr[i] = i;
+            groupIndexs[i] = i;
         }
-        List<int[]>[] arrLstCombination = new List<int[]>[N];
+        List<int[]>[] arrLstCombination = new List<int[]>[groupCount];
 
-        int C = 0;
-        for (var i = 0; i < N; i++)
+        int combineCount = 0;  //组合数
+        for (var i = 0; i < groupCount; i++)
         {
-            arrLstCombination[i] = Algorithms.PermutationAndCombination<int>.GetCombination(arr, i + 1);
-            C += arrLstCombination[i].Count;
+            //每个分组分别计算其组合数
+            arrLstCombination[i] = Algorithms.PermutationAndCombination<int>.GetCombination(groupIndexs, i + 1);
+            combineCount += arrLstCombination[i].Count;
         }
 
         bool bContinue = EditorUtility.DisplayDialog("WARNING",
-            @"Total files: " + C,
+            @"Total files: " + combineCount,
             "Continue",
             "Cancel");
 
@@ -335,8 +339,11 @@ public class JSComponent{0} : JSComponent
             Debug.Log("Operation canceled.");
             return;
         }
+        string dir = Application.dataPath + "/JSBinding/Source/JSComponent/Generated";
+        Directory.Delete(dir,true);
+        Directory.CreateDirectory(dir);
 
-        for (var i = 0; i < N; i++)
+        for (var i = 0; i < groupCount; i++)
         {
             List<int[]> l = arrLstCombination[i];
             for (var j = 0; j < l.Count; j++)
@@ -351,9 +358,9 @@ public class JSComponent{0} : JSComponent
                 StringBuilder sbFile = new StringBuilder();
                 for (var k = 0; k < a.Length; k++)
                 {
-                    var group = dict2[a[k]];
+                    var group = iToGroupKeyDic[a[k]];
                     suffix += "_" + group;
-                    List<Info> lstInfo = dict[group];
+                    List<Info> lstInfo = groupInfoDic[group];
                     foreach (var li in lstInfo)
                     {
                         sbVariableDeclaration.Append(li.VariableDeclaration);
@@ -363,7 +370,7 @@ public class JSComponent{0} : JSComponent
                 }
                 sbFile.AppendFormat(fileFormat, suffix, sbVariableDeclaration, sbVariableInit, sbFunctions);
 
-                string fileName = Application.dataPath + "/JSBinding/Source/JSComponent/Generated/JSComponent" + suffix + ".cs";
+                string fileName = string.Format("{0}/{1}.cs",dir,"JSComponent" + suffix);
                 var w = new StreamWriter(fileName, false/* append */, Encoding.UTF8);
                 w.Write(sbFile.ToString());
                 w.Close();

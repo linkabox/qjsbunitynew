@@ -1,4 +1,4 @@
-using SharpKit.JavaScript;
+﻿using SharpKit.JavaScript;
 using UnityEngine;
 using System.Collections;
 using System;
@@ -14,7 +14,7 @@ using System.Reflection;
 /// </summary>
 namespace jsimp
 {
-[JsType(JsMode.Clr, "~/Assets/StreamingAssets/JavaScript/SharpKitGeneratedFiles.javascript")]
+[JsType(JsMode.Clr)]
     public class Reflection
 	{
 		/// <summary>

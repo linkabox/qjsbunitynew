@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
@@ -69,7 +69,7 @@ public class JSEngine : MonoBehaviour
             if (mDebug)
             {
                 Debug.Log("JS: Enable Debugger");
-                JSApi.enableDebugger(new string[] { JSBindingSettings.jsDir }, 1, port);
+                JSApi.enableDebugger(new string[] { JSPathSettings.jsDir }, 1, port);
             }
         }
         else

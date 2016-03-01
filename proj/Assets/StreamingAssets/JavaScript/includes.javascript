@@ -1,4 +1,4 @@
-/*
+﻿/*
 * Author: Qiucw
 * DO NOT change order
 */
@@ -41,6 +41,7 @@ CS.require("Manual/UnityEngine_Vector2");
 CS.require("Manual/UnityEngine_MonoBehaviour");
 CS.require("Manual/UnityEngine_WaitForSeconds");
 CS.require("Manual/MissingClasses");
+
 //
 // may be more..
 //
@@ -70,7 +71,7 @@ printArr = function (obj, name)
 */
 
 CS.require("SharpKitGeneratedFiles");
-CS.require("MonoBehaviour2JSComponentName");
+// CS.require("MonoBehaviour2JSComponentName");
 
 
 // 4) JavaScript implemented

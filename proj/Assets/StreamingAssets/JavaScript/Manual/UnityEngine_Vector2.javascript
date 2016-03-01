@@ -113,10 +113,9 @@ _jstype.definition.Equals = function(a0/*Object*/) {
     return this.x == a0.x && this.y == a0.y;
 }
 /* Int32 */
-//_jstype.definition.GetHashCode = function() { 
-//    
-//    return CS.Call(4, 241, 1, false, this.__nativeObj, false); 
-//}
+_jstype.definition.GetHashCode = function() { 
+   return this.x ^ (this.y << 2);
+}
 /* Void */
 _jstype.definition.Normalize = function() { 
     var mag = this.get_magnitude()
@@ -193,10 +192,15 @@ _jstype.staticDefinition.Min = function(a0/*Vector2*/, a1/*Vector2*/) {
     return UnityEngine.Vector2.New(Math.min(a0.x, a1.x), Math.min(a0.y, a1.y));
 }
 /* static Vector2  */
-//_jstype.staticDefinition.MoveTowards = function(a0/*Vector2*/, a1/*Vector2*/, a2/*Single*/) { 
-//    
-//    return CS.Call(4, 241, 15, true, false, a0, a1, a2); 
-//}
+_jstype.staticDefinition.MoveTowards = function(a0/*Vector2*/, a1/*Vector2*/, a2/*Single*/) { 
+   var v2 = UnityEngine.Vector2.op_Subtraction(a1, a0);
+    var magnitude = v2.get_magnitude();
+    if(magnitude <= a2 || magnitude == 0){
+        return a1;
+    }else{
+        return UnityEngine.Vector2.op_Addition(a0,UnityEngine.Vector2.op_Multiply$$Vector2$$Single(UnityEngine.Vector2.op_Division(v2,magnitude),a2));
+    }
+}
 /* static Vector2  */
 _jstype.staticDefinition.op_Addition = function(a0/*Vector2*/, a1/*Vector2*/) { 
     return UnityEngine.Vector2.New(a0.x + a1.x, a0.y + a1.y);

@@ -13,11 +13,11 @@ public static class JSGenerator
 {
     // input
     static StringBuilder sb = null;
-    public static Type type = null;
+    public static Type cachedType = null;
 
     static StreamWriter W;
-    //static string enumFile = JSBindingSettings.jsGeneratedDir + "/enum" + JSBindingSettings.jsExtension;
-    //static string tempFile = JSBindingSettings.jsDir + "/temp"+JSBindingSettings.jsExtension;
+    //static string enumFile = JSBindingSettings.jsGeneratedDir + "/enum" + JSPathSettings.jsExtension;
+    //static string tempFile = JSPathSettings.jsDir + "/temp"+JSPathSettings.jsExtension;
 
     public static void OnBegin()
     {
@@ -39,7 +39,7 @@ public static class JSGenerator
 //        }
 
 		// clear generated enum files
-		W = OpenFile(JSBindingSettings.jsGeneratedFiles, false);
+		W = OpenFile(JSPathSettings.jsGeneratedFiles, false);
 		W.Write("this.Enum = {};\n");
     }
     public static void OnEnd()
@@ -505,20 +505,20 @@ _jstype.staticDefinition.{1} = function({2}) [[
 		List<string> memberNames = new List<string>();
 
         GeneratorHelp.ATypeInfo ti;
-        int slot = GeneratorHelp.AddTypeInfo(type, out ti);
-        var sbHeader = BuildHeader(type);
-		var sbCons = sbHeader.Append(BuildConstructors(type, ti.constructors, slot, ti.howmanyConstructors, memberNames));
-		var sbFields = BuildFields(type, ti.fields, slot, memberNames);
-		var sbProperties = BuildProperties(type, ti.properties, slot, memberNames);
-		var sbMethods = BuildMethods(type, ti.methods, slot, memberNames);
+        int slot = GeneratorHelp.AddTypeInfo(cachedType, out ti);
+        var sbHeader = BuildHeader(cachedType);
+		var sbCons = sbHeader.Append(BuildConstructors(cachedType, ti.constructors, slot, ti.howmanyConstructors, memberNames));
+		var sbFields = BuildFields(cachedType, ti.fields, slot, memberNames);
+		var sbProperties = BuildProperties(cachedType, ti.properties, slot, memberNames);
+		var sbMethods = BuildMethods(cachedType, ti.methods, slot, memberNames);
         //sbMethods.Append(BuildTail());
-        var sbClass = BuildClass(type, sbFields, sbProperties, sbMethods, sbCons);
+        var sbClass = BuildClass(cachedType, sbFields, sbProperties, sbMethods, sbCons);
 		HandleStringFormat(sbClass);
 		
 		
 		//        string fileName = JSBindingSettings.jsGeneratedDir + "/" +
 		//            JSNameMgr.GetTypeFileName(JSGenerator.type)
-		//            + JSBindingSettings.jsExtension;
+		//            + JSPathSettings.jsExtension;
 		//        var writer2 = OpenFile(fileName, false);
 		//        writer2.Write(sbClass.ToString());
 		//        writer2.Close();
@@ -534,10 +534,10 @@ _jstype.staticDefinition.{1} = function({2}) [[
         // comment line
         string fmtComment = @"// {0}
 ";
-        sb.AppendFormat(fmtComment, type.ToString());
+        sb.AppendFormat(fmtComment, cachedType.ToString());
 
         // remove name space
-        string typeName = type.ToString();
+        string typeName = cachedType.ToString();
         int lastDot = typeName.LastIndexOf('.');
         if (lastDot >= 0)
         {
@@ -551,7 +551,7 @@ _jstype.staticDefinition.{1} = function({2}) [[
         sb.AppendFormat(fmt, typeName);
 
 
-        FieldInfo[] fields = type.GetFields(BindingFlags.GetField | BindingFlags.Public | BindingFlags.Static);
+        FieldInfo[] fields = cachedType.GetFields(BindingFlags.GetField | BindingFlags.Public | BindingFlags.Static);
         string fmtField = "    {0}: {1}{2}\n";
         for (int i = 0; i < fields.Length; i++)
         {
@@ -566,7 +566,7 @@ _jstype.staticDefinition.{1} = function({2}) [[
 
     public static void Clear()
     {
-        type = null;
+        cachedType = null;
         sb = new StringBuilder();
     }
     static void GenEnd()
@@ -636,7 +636,7 @@ using UnityEngine;
         for (int i = 0; i < JSBindingSettings.enums.Length; i++)
         {
             JSGenerator.Clear();
-            JSGenerator.type = JSBindingSettings.enums[i];
+            JSGenerator.cachedType = JSBindingSettings.enums[i];
             JSGenerator.GenerateEnum();
         }
 
@@ -644,17 +644,29 @@ using UnityEngine;
 		Dictionary<string, List<string>> allDefs = new Dictionary<string, List<string>>();
 
         // classes
-        for (int i = 0; i < JSBindingSettings.classes.Length; i++)
+        for (int i = 0; i < CSGenerator.exportTypeList.Count; i++)
         {
             JSGenerator.Clear();
-            JSGenerator.type = JSBindingSettings.classes[i];
-            if (!typeClassName.TryGetValue(type, out className))
-                className = type.Name;
+            JSGenerator.cachedType = CSGenerator.exportTypeList[i];
+            if (!typeClassName.TryGetValue(cachedType, out className))
+                className = cachedType.Name;
+
+
+            List<string> memberNames = JSGenerator.GenerateClass();
+            allDefs.Add(SharpKitClassName(cachedType), memberNames);
+        }
+
+   //     for (int i = 0; i < JSBindingSettings.classes.Length; i++)
+   //     {
+   //         JSGenerator.Clear();
+   //         JSGenerator.cachedType = JSBindingSettings.classes[i];
+   //         if (!typeClassName.TryGetValue(cachedType, out className))
+   //             className = cachedType.Name;
             
 
-			List<string> memberNames = JSGenerator.GenerateClass();
-			allDefs.Add(SharpKitClassName(type), memberNames);
-        }
+			//List<string> memberNames = JSGenerator.GenerateClass();
+			//allDefs.Add(SharpKitClassName(cachedType), memberNames);
+   //     }
 
         JSGenerator.OnEnd();
 
@@ -675,40 +687,40 @@ using UnityEngine;
         Debug.Log("Generate JS Bindings OK. enum " + JSBindingSettings.enums.Length.ToString() + ", class " + JSBindingSettings.classes.Length.ToString());
     }
 
-	//[UnityEditor.MenuItem("JSB/Merge Generated JS and SharpKit Generated JS", false, 502)]
-	public static void MergeGeneratedJsAndSharpKitGeneratedJS()
-	{
-		string[] sourceDirs = new string[]
-		{
-			//JSBindingSettings.jsGeneratedDir,
-			JSBindingSettings.sharpKitGenFileFullDir,
-		};
-		string[] targetFiles = new string[]
-		{
-			//JSBindingSettings.GeneratedFilesAll,
-			JSBindingSettings.SharpkitGeneratedFilesAll,
-		};
+	////[UnityEditor.MenuItem("JSB/Merge Generated JS and SharpKit Generated JS", false, 502)]
+	//public static void MergeGeneratedJsAndSharpKitGeneratedJS()
+	//{
+	//	string[] sourceDirs = new string[]
+	//	{
+	//		//JSBindingSettings.jsGeneratedDir,
+	//		JSBindingSettings.sharpKitGenFileFullDir,
+	//	};
+	//	string[] targetFiles = new string[]
+	//	{
+	//		//JSBindingSettings.GeneratedFilesAll,
+	//		JSBindingSettings.SharpkitGeneratedFilesAll,
+	//	};
 
-		for (var i = 0; i < sourceDirs.Length; i++)
-		{
-			string dir = sourceDirs[i];
-			string[] files = Directory.GetFiles(
-				dir,
-				"*.javascript", SearchOption.AllDirectories);
+	//	for (var i = 0; i < sourceDirs.Length; i++)
+	//	{
+	//		string dir = sourceDirs[i];
+	//		string[] files = Directory.GetFiles(
+	//			dir,
+	//			"*.javascript", SearchOption.AllDirectories);
 
-			StringBuilder sb = new StringBuilder();
-			StringBuilder sbFileName = new StringBuilder();
-			foreach (var f in files)
-			{
-				string text = File.ReadAllText(f);
-				sb.Append(text);
-			}
+	//		StringBuilder sb = new StringBuilder();
+	//		StringBuilder sbFileName = new StringBuilder();
+	//		foreach (var f in files)
+	//		{
+	//			string text = File.ReadAllText(f);
+	//			sb.Append(text);
+	//		}
 
-			File.WriteAllText(targetFiles[i], sb.ToString());
+	//		File.WriteAllText(targetFiles[i], sb.ToString());
 
-			Debug.Log ("合并 " + dir + " ---> " + targetFiles[i]);
-		}		
-	}
+	//		Debug.Log ("合并 " + dir + " ---> " + targetFiles[i]);
+	//	}		
+	//}
 
     //     [MenuItem("JS for Unity/Output All Types in UnityEngine")]
     //     public static void OutputAllTypesInUnityEngine()

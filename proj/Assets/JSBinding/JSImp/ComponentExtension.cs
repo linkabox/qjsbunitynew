@@ -1,7 +1,7 @@
-using SharpKit.JavaScript;
+﻿using SharpKit.JavaScript;
 using UnityEngine;
 using System.Collections;
-[JsType(JsMode.Clr, "~/Assets/StreamingAssets/JavaScript/SharpKitGeneratedFiles.javascript")]
+[JsType(JsMode.Clr)]
 public static class ComponentExtension
 {
     [JsMethod(Code = @"return com.GetComponent$1(T);")]

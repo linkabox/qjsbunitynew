@@ -10,8 +10,6 @@ public class JSComponent_Update_Application : JSComponent
     int idOnApplicationFocus;
     int idOnApplicationPause;
     int idOnApplicationQuit;
-    int idOnAudioFilterRead;
-    int idOnLevelWasLoaded;
 
     protected override void initMemberFunction()
     {
@@ -21,8 +19,6 @@ public class JSComponent_Update_Application : JSComponent
         idOnApplicationFocus = JSApi.getObjFunction(jsObjID, "OnApplicationFocus");
         idOnApplicationPause = JSApi.getObjFunction(jsObjID, "OnApplicationPause");
         idOnApplicationQuit = JSApi.getObjFunction(jsObjID, "OnApplicationQuit");
-        idOnAudioFilterRead = JSApi.getObjFunction(jsObjID, "OnAudioFilterRead");
-        idOnLevelWasLoaded = JSApi.getObjFunction(jsObjID, "OnLevelWasLoaded");
     }
 
     void Update()
@@ -44,14 +40,6 @@ public class JSComponent_Update_Application : JSComponent
     void OnApplicationQuit()
     {
         callIfExist(idOnApplicationQuit);
-    }
-    void OnAudioFilterRead(float[] data, int channels)
-    {
-        callIfExist(idOnAudioFilterRead, data, channels);
-    }
-    void OnLevelWasLoaded(int level)
-    {
-        callIfExist(idOnLevelWasLoaded, level);
     }
 
 }

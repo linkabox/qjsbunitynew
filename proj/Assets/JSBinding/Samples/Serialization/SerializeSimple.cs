@@ -2,7 +2,8 @@ using SharpKit.JavaScript;
 using System;
 using UnityEngine;
 using System.Collections;
-[JsType(JsMode.Clr, "~/Assets/StreamingAssets/JavaScript/SharpKitGeneratedFiles.javascript")]
+
+[JsType(JsMode.Clr)]
 public class SerializeSimple : MonoBehaviour 
 {
     public int age;

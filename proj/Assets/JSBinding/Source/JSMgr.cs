@@ -103,6 +103,7 @@ public static class JSMgr
         if (InitJSEngine_ing)
         {
             Debug.LogError("FATAL ERROR: Trying to InitJSEngine twice");
+            return false;
         }
 
         InitJSEngine_ing = true;
@@ -129,9 +130,9 @@ public static class JSMgr
         JSMgr.jsLoader = jsLoader;
 
         bool ret = false;
-        if (!RefCallStaticMethod("CSharpGenerated", "RegisterAll"))
+        if (!RefCallStaticMethod("CSGenerateRegister", "RegisterAll"))
         {
-            Debug.LogError("Call CSharpGenerated.RegisterAll() failed. Did you forget to click menu [Assets | JSB | Generate JS and CS Bindings]?");
+            Debug.LogError("Call CSGenerateRegister.RegisterAll() failed. Did you forget to click menu [Assets | JSB | Generate JS and CS Bindings]?");
             onInitJSEngine(false);
             ret = false;
         }
@@ -237,12 +238,12 @@ public static class JSMgr
     /// <returns></returns>
     static public string getJSFullName(string shortName)
     {
-        string baseDir = JSBindingSettings.jsDir;
-        string fullName = baseDir + "/" + shortName;// + JSBindingSettings.jsExtension;
+        string baseDir = JSPathSettings.jsDir;
+        string fullName = baseDir + "/" + shortName;// + JSPathSettings.jsExtension;
         // don't append, if extension already exist
         if (shortName.IndexOf('.') < 0)
         {
-            fullName += JSBindingSettings.jsExtension;
+            fullName += JSPathSettings.jsExtension;
         }
         return fullName;
     }
@@ -364,7 +365,7 @@ public static class JSMgr
         byte[] bytes;
 
         bool jsc = false;
-        string jscFullName = fullName.Replace(JSBindingSettings.jsDir, JSBindingSettings.jscDir).Replace(JSBindingSettings.jsExtension, JSBindingSettings.jscExtension);
+        string jscFullName = fullName.Replace(JSPathSettings.jsDir, JSPathSettings.jscDir).Replace(JSPathSettings.jsExtension, JSPathSettings.jscExtension);
 //         if (File.Exists(jscFullName))
 //         {
 //             jsc = true;

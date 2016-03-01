@@ -2,7 +2,8 @@ using SharpKit.JavaScript;
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
-[JsType(JsMode.Clr, "~/Assets/StreamingAssets/JavaScript/SharpKitGeneratedFiles.javascript")]
+
+[JsType(JsMode.Clr)]
 public class DictionaryTest : MonoBehaviour {
 
 	// Use this for initialization

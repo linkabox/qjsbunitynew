@@ -2,13 +2,15 @@ using SharpKit.JavaScript;
 using System;
 using UnityEngine;
 using System.Collections;
-[JsType(JsMode.Clr, "~/Assets/StreamingAssets/JavaScript/SharpKitGeneratedFiles.javascript")]
+
+[JsType(JsMode.Clr)]
 public class SerializeStruct : MonoBehaviour
 {
     [System.Serializable]
 
 //[JsType(JsMode.Clr,"../../StreamingAssets/JavaScript/SharpKitGenerated/Serialization/AppleInfo.javascript")]
-[JsType(JsMode.Clr, "~/Assets/StreamingAssets/JavaScript/SharpKitGeneratedFiles.javascript")]
+
+[JsType(JsMode.Clr)]
     public struct AppleInfo
     { 
         public int age;

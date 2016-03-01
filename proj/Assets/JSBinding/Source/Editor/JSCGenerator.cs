@@ -15,7 +15,7 @@ public class JSCGenerator
 
         // 2)
         string bat = (Application.dataPath + "/../../tools/cocos2d-console/bin/cocos").Replace('/', '\\');
-        string arg = string.Format("jscompile -s \"{0}\" -d \"{1}\"", JSBindingSettings.mergedJsDir.Replace('/', '\\'), JSBindingSettings.jscDir.Replace('/', '\\'));
+        string arg = string.Format("jscompile -s \"{0}\" -d \"{1}\"", JSPathSettings.mergedJsDir.Replace('/', '\\'), JSPathSettings.jscDir.Replace('/', '\\'));
         var process = System.Diagnostics.Process.Start(bat, arg);
 		process.WaitForExit(); // 等待结束
     }
@@ -24,10 +24,10 @@ public class JSCGenerator
 	//[MenuItem("JSB/Change Extension .jsc to .bytes", false, 161)]
 	public static void ChangeExtensionJsc2Bytes()
 	{
-		string[] arr = Directory.GetFiles (JSBindingSettings.jscDir, "*.jsc", SearchOption.AllDirectories);
+		string[] arr = Directory.GetFiles (JSPathSettings.jscDir, "*.jsc", SearchOption.AllDirectories);
 		foreach (var f in arr)
 		{
-			File.Copy (f, f.Replace(".jsc", JSBindingSettings.jscExtension), true);
+			File.Copy (f, f.Replace(".jsc", JSPathSettings.jscExtension), true);
 			File.Delete(f);
 		}
 		AssetDatabase.Refresh ();
@@ -43,9 +43,9 @@ public class JSCGenerator
         string[] lst;
 
         // 1) 删除 mergedJsDir 下所有文件
-        if (Directory.Exists(JSBindingSettings.mergedJsDir))
+        if (Directory.Exists(JSPathSettings.mergedJsDir))
         {
-            lst = Directory.GetFiles(JSBindingSettings.mergedJsDir, "*.*", SearchOption.AllDirectories);
+            lst = Directory.GetFiles(JSPathSettings.mergedJsDir, "*.*", SearchOption.AllDirectories);
             foreach (var l in lst)
             {
                 File.Delete(l);
@@ -53,10 +53,10 @@ public class JSCGenerator
         }
 
         // 2) 拷贝 jsDir -> mergedJsDir
-        lst = Directory.GetFiles(JSBindingSettings.jsDir, "*.javascript", SearchOption.AllDirectories);
+        lst = Directory.GetFiles(JSPathSettings.jsDir, "*.javascript", SearchOption.AllDirectories);
         foreach (var l in lst)
         {
-            string dst = l.Replace('\\', '/').Replace(JSBindingSettings.jsDir, JSBindingSettings.mergedJsDir).Replace(JSBindingSettings.jsExtension, ".js");
+            string dst = l.Replace('\\', '/').Replace(JSPathSettings.jsDir, JSPathSettings.mergedJsDir).Replace(JSPathSettings.jsExtension, ".js");
             Directory.CreateDirectory(Path.GetDirectoryName(dst));
             File.Copy(l, dst, true);
         }

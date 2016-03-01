@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 using SharpKit.JavaScript;
@@ -6,7 +6,7 @@ using System;
 
 namespace jsimp
 {
-[JsType(JsMode.Clr, "~/Assets/StreamingAssets/JavaScript/SharpKitGeneratedFiles.javascript")]
+[JsType(JsMode.Clr)]
     public static class Misc
     {
         [JsMethod(Code = @"return str.replace(str1, str2);")]

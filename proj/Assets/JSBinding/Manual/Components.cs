@@ -1,4 +1,4 @@
-using System;
+ï»¿using System;
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
@@ -111,7 +111,7 @@ public partial class UnityEngineManual
             jsComp.jsClassName = typeString;
             jsComp.jsFail = false;
             jsComp.init(true);
-            jsComp.callAwake(); // Òªµ÷ÓÃ js µÄ Awake
+            jsComp.callAwake(); // è¦è°ƒç”¨ js çš„ Awake
 
             //JSApi.JSh_SetRvalObject(vc.cx, vc.vp, jsComp.jsObj);
             JSApi.setObject((int)JSApi.SetType.Rval, jsComp.GetJSObjID(false));

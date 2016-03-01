@@ -10,12 +10,9 @@ public class JSComponent_TransChange_Application_Render : JSComponent
     int idOnApplicationFocus;
     int idOnApplicationPause;
     int idOnApplicationQuit;
-    int idOnAudioFilterRead;
-    int idOnLevelWasLoaded;
     int idOnPostRender;
     int idOnPreCull;
     int idOnPreRender;
-    int idOnRenderImage;
     int idOnRenderObject;
     int idOnWillRenderObject;
 
@@ -27,12 +24,9 @@ public class JSComponent_TransChange_Application_Render : JSComponent
         idOnApplicationFocus = JSApi.getObjFunction(jsObjID, "OnApplicationFocus");
         idOnApplicationPause = JSApi.getObjFunction(jsObjID, "OnApplicationPause");
         idOnApplicationQuit = JSApi.getObjFunction(jsObjID, "OnApplicationQuit");
-        idOnAudioFilterRead = JSApi.getObjFunction(jsObjID, "OnAudioFilterRead");
-        idOnLevelWasLoaded = JSApi.getObjFunction(jsObjID, "OnLevelWasLoaded");
         idOnPostRender = JSApi.getObjFunction(jsObjID, "OnPostRender");
         idOnPreCull = JSApi.getObjFunction(jsObjID, "OnPreCull");
         idOnPreRender = JSApi.getObjFunction(jsObjID, "OnPreRender");
-        idOnRenderImage = JSApi.getObjFunction(jsObjID, "OnRenderImage");
         idOnRenderObject = JSApi.getObjFunction(jsObjID, "OnRenderObject");
         idOnWillRenderObject = JSApi.getObjFunction(jsObjID, "OnWillRenderObject");
     }
@@ -57,14 +51,6 @@ public class JSComponent_TransChange_Application_Render : JSComponent
     {
         callIfExist(idOnApplicationQuit);
     }
-    void OnAudioFilterRead(float[] data, int channels)
-    {
-        callIfExist(idOnAudioFilterRead, data, channels);
-    }
-    void OnLevelWasLoaded(int level)
-    {
-        callIfExist(idOnLevelWasLoaded, level);
-    }
     void OnPostRender()
     {
         callIfExist(idOnPostRender);
@@ -76,10 +62,6 @@ public class JSComponent_TransChange_Application_Render : JSComponent
     void OnPreRender()
     {
         callIfExist(idOnPreRender);
-    }
-    void OnRenderImage(RenderTexture src, RenderTexture dest)
-    {
-        callIfExist(idOnRenderImage, src, dest);
     }
     void OnRenderObject()
     {

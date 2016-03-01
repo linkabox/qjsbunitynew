@@ -4,7 +4,8 @@ using System.Collections;
 using System.Text;
 
 // JS VERSION OF THIS TEST DOES NOT WORK
-[JsType(JsMode.Clr, "~/Assets/StreamingAssets/JavaScript/SharpKitGeneratedFiles.javascript")]
+
+[JsType(JsMode.Clr)]
 public class EncodingTest : MonoBehaviour 
 {
     public static string byteConverString(byte[] data, int index, int count)

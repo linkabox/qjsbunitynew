@@ -14,18 +14,18 @@ public static class CSGenerator
 {
     // input
     static StringBuilder sb = null;
-    public static Type type = null;
+    public static Type cachedType = null;
     public static string thisClassName = null;
 
-    static string tempFile = JSBindingSettings.jsDir + "/temp" + JSBindingSettings.jsExtension;
+    static string tempFile = JSPathSettings.jsDir + "/temp" + JSPathSettings.jsExtension;
 
     public static void OnBegin()
     {
         GeneratorHelp.ClearTypeInfo();
 
-        if (Directory.Exists(JSBindingSettings.csGeneratedDir))
+        if (Directory.Exists(JSPathSettings.csGeneratedDir))
         {
-            string[] files = Directory.GetFiles(JSBindingSettings.csGeneratedDir);
+            string[] files = Directory.GetFiles(JSPathSettings.csGeneratedDir);
             for (int i = 0; i < files.Length; i++)
             {
                 File.Delete(files[i]);
@@ -33,7 +33,7 @@ public static class CSGenerator
         }
         else
         {
-            Directory.CreateDirectory(JSBindingSettings.csGeneratedDir);
+            Directory.CreateDirectory(JSPathSettings.csGeneratedDir);
         }
     }
     public static void OnEnd()
@@ -101,6 +101,7 @@ public static class CSGenerator
             //var sbCall = new StringBuilder();
 
             FieldInfo field = fields[i];
+            if (field.DeclaringType != null) ccbn.nameSpaces.Add(field.DeclaringType.Namespace);
             bool isDelegate = JSDataExchangeEditor.IsDelegateDerived(field.FieldType);// (typeof(System.Delegate).IsAssignableFrom(field.FieldType));
             if (isDelegate)
             {
@@ -360,6 +361,7 @@ public static class CSGenerator
             var sbCall = new StringBuilder();
 
             PropertyInfo property = properties[i];
+            if (property.DeclaringType != null) ccbn.nameSpaces.Add(property.DeclaringType.Namespace);
             MethodInfo[] accessors = property.GetAccessors();
             bool isStatic = accessors[0].IsStatic;
             JSDataExchangeEditor.MemberFeature features = 0;
@@ -604,13 +606,13 @@ public static class CSGenerator
 
         if (bConstructor)
         {
-            if (type.IsGenericTypeDefinition)
+            if (cachedType.IsGenericTypeDefinition)
             {
                 // Not generic method, but is generic type
                 StringBuilder sbt = new StringBuilder();
 
                 sbt.AppendFormat("    ConstructorInfo constructor = JSDataExchangeMgr.makeGenericConstructor(typeof({0}), constructorID{1}); \n",
-                        JSNameMgr.GetTypeFullName(type), methodTag);
+                        JSNameMgr.GetTypeFullName(cachedType), methodTag);
 
                 //sbMethodHitTest.AppendFormat("GenericTypeCache.getConstructor(typeof({0}), {2}.constructorID{1});\n", JSNameMgr.GetTypeFullName(type), methodTag, JSNameMgr.GetTypeFileName(type));
 
@@ -635,7 +637,7 @@ public static class CSGenerator
             else // static method
             {
                 sbt.AppendFormat("    MethodInfo method = JSDataExchangeMgr.makeGenericMethod(typeof({0}), methodID{1}, {2}); \n",
-                    JSNameMgr.GetTypeFullName(type),
+                    JSNameMgr.GetTypeFullName(cachedType),
                     methodTag,
                     TCount);
             }
@@ -644,7 +646,7 @@ public static class CSGenerator
 
             sb.Append(sbt);
         }
-        else if (type.IsGenericTypeDefinition)
+        else if (cachedType.IsGenericTypeDefinition)
         {
             // not generic method, but is generic type
             StringBuilder sbt = new StringBuilder();
@@ -658,7 +660,7 @@ public static class CSGenerator
             {
                 // Debug.LogError("=================================ERROR");
                 sbt.AppendFormat("    MethodInfo method = GenericTypeCache.getMethod(typeof({0}), methodID{1}); \n",
-                    JSNameMgr.GetTypeFullName(type), // [0]
+                    JSNameMgr.GetTypeFullName(cachedType), // [0]
                     methodTag);
             }
             sbt.AppendFormat("    if (method == null) return true;\n");
@@ -666,7 +668,7 @@ public static class CSGenerator
 
             sb.Append(sbt);
         }
-        else if (type.IsGenericType)
+        else if (cachedType.IsGenericType)
         {
             /////////////////////
             /// ERROR ///////////
@@ -697,8 +699,8 @@ public static class CSGenerator
         }
 
         
-        if (bConstructor && type.IsGenericTypeDefinition)
-            sb.AppendFormat("    int len = argc - {0};\n", type.GetGenericArguments().Length);
+        if (bConstructor && cachedType.IsGenericTypeDefinition)
+            sb.AppendFormat("    int len = argc - {0};\n", cachedType.GetGenericArguments().Length);
         else if (TCount == 0)
             sb.AppendFormat("    int len = argc;\n");
         else
@@ -718,7 +720,7 @@ public static class CSGenerator
                 if (JSDataExchangeEditor.IsDelegateDerived(p.ParameterType))
                 {
                     //string delegateGetName = JSDataExchangeEditor.GetFunctionArg_DelegateFuncionName(className, methodName, methodIndex, i);
-                    string delegateGetName = JSDataExchangeEditor.GetMethodArg_DelegateFuncionName(type, methodName, methodTag, i);
+                    string delegateGetName = JSDataExchangeEditor.GetMethodArg_DelegateFuncionName(cachedType, methodName, methodTag, i);
 
                     //if (p.ParameterType.IsGenericType)
                     if (p.ParameterType.ContainsGenericParameters)
@@ -777,8 +779,8 @@ public static class CSGenerator
             {
                 StringBuilder sbCall = new StringBuilder();
 
-                if (!type.IsGenericTypeDefinition)
-                    sbCall.AppendFormat("new {0}({1})", JSNameMgr.GetTypeFullName(type), sbActualParam.ToString());
+                if (!cachedType.IsGenericTypeDefinition)
+                    sbCall.AppendFormat("new {0}({1})", JSNameMgr.GetTypeFullName(cachedType), sbActualParam.ToString());
                 else
                 {
                     sbCall.AppendFormat("constructor.Invoke(null, new object[][[{0}]])", sbActualParam);
@@ -814,12 +816,12 @@ public static class CSGenerator
                 StringBuilder sbActualParamT_arr = new StringBuilder();
                 //StringBuilder sbUpdateRefT = new StringBuilder();
 
-                if (TCount == 0 && !type.IsGenericTypeDefinition)
+                if (TCount == 0 && !cachedType.IsGenericTypeDefinition)
                 {
                     if (bStatic)
-                        sbCall.AppendFormat("{0}.{1}({2})", JSNameMgr.GetTypeFullName(type), methodName, sbActualParam.ToString());
-                    else if (!type.IsValueType)
-                        sbCall.AppendFormat("(({0})vc.csObj).{1}({2})", JSNameMgr.GetTypeFullName(type), methodName, sbActualParam.ToString());
+                        sbCall.AppendFormat("{0}.{1}({2})", JSNameMgr.GetTypeFullName(cachedType), methodName, sbActualParam.ToString());
+                    else if (!cachedType.IsValueType)
+                        sbCall.AppendFormat("(({0})vc.csObj).{1}({2})", JSNameMgr.GetTypeFullName(cachedType), methodName, sbActualParam.ToString());
                     else
                         sbCall.AppendFormat("argThis.{0}({1})", methodName, sbActualParam.ToString());
                 }
@@ -838,7 +840,7 @@ public static class CSGenerator
 
                     if (bStatic)
                         sbCall.AppendFormat("method.Invoke(null, arr_t)");
-                    else if (!type.IsValueType)
+                    else if (!cachedType.IsValueType)
                         sbCall.AppendFormat("method.Invoke(vc.csObj, arr_t)");
                     else
                         sbCall.AppendFormat("method.Invoke(vc.csObj, arr_t)");
@@ -847,10 +849,10 @@ public static class CSGenerator
                 string callAndReturn = JSDataExchangeEditor.Get_Return(returnType, sbCall.ToString());
 
                 StringBuilder sbStruct = null;
-                if (type.IsValueType && !bStatic && TCount == 0 && !type.IsGenericTypeDefinition)
+                if (cachedType.IsValueType && !bStatic && TCount == 0 && !cachedType.IsGenericTypeDefinition)
                 {
                     sbStruct = new StringBuilder();
-                    sbStruct.AppendFormat("{0} argThis = ({0})vc.csObj;", JSNameMgr.GetTypeFullName(type));
+                    sbStruct.AppendFormat("{0} argThis = ({0})vc.csObj;", JSNameMgr.GetTypeFullName(cachedType));
                 }
 
                 sb.AppendFormat("    {0}if (len == {1}) \n", (j == minNeedParams) ? "" : "else ", j);
@@ -862,7 +864,7 @@ public static class CSGenerator
                 }
 
                 // if it is Struct, get argThis first
-                if (type.IsValueType && !bStatic && TCount == 0 && !type.IsGenericTypeDefinition)
+                if (cachedType.IsValueType && !bStatic && TCount == 0 && !cachedType.IsGenericTypeDefinition)
                 {
                     sb.Append(sbStruct);
                 }
@@ -870,7 +872,7 @@ public static class CSGenerator
                 sb.Append("        ").Append(callAndReturn).Append("\n");
 
                 // if it is Struct, update 'this' object
-                if (type.IsValueType && !bStatic && TCount == 0 && !type.IsGenericTypeDefinition)
+                if (cachedType.IsValueType && !bStatic && TCount == 0 && !cachedType.IsGenericTypeDefinition)
                 {
                     sb.Append("        JSMgr.changeJSObj(vc.jsObjID, argThis);\n");
                 }
@@ -964,9 +966,12 @@ static bool {0}(JSVCall vc, int argc)
 
                 for (int j = 0; j < paramS.Length; j++)
                 {
-                    if (JSDataExchangeEditor.IsDelegateDerived(paramS[j].ParameterType))
+                    ParameterInfo pInfo = paramS[j];
+                    ccbn.nameSpaces.Add(pInfo.ParameterType.Namespace);
+                    if (JSDataExchangeEditor.IsDelegateDerived(pInfo.ParameterType))
                     {
-                        StringBuilder sbD = JSDataExchangeEditor.Build_DelegateFunction(type, cons, paramS[j].ParameterType, methodTag, j);
+                        StringBuilder sbD = JSDataExchangeEditor.Build_DelegateFunction(type, cons,
+                            pInfo.ParameterType, methodTag, j);
                         sb.Append(sbD);
                     }
                 }
@@ -1030,15 +1035,18 @@ static bool {0}(JSVCall vc, int argc)
 
             for (int j = 0; j < paramS.Length; j++)
             {
-//                 if (paramS[j].ParameterType == typeof(DaikonForge.Tween.TweenAssignmentCallback<Vector3>))
-//                 {
-//                     Debug.Log("yes");
-//                
-                //if (typeof(System.Delegate).IsAssignableFrom(paramS[j].ParameterType))
-                if (JSDataExchangeEditor.IsDelegateDerived(paramS[j].ParameterType))
+                ParameterInfo pInfo = paramS[j];
+                ccbn.nameSpaces.Add(pInfo.ParameterType.Namespace);
+                //                 if (pInfo.ParameterType == typeof(DaikonForge.Tween.TweenAssignmentCallback<Vector3>))
+                //                 {
+                //                     Debug.Log("yes");
+                //                
+                //if (typeof(System.Delegate).IsAssignableFrom(pInfo.ParameterType))
+                if (JSDataExchangeEditor.IsDelegateDerived(pInfo.ParameterType))
                 {
-                    // StringBuilder sbD = JSDataExchangeEditor.BuildFunctionArg_DelegateFunction(type.Name, method.Name, paramS[j].ParameterType, i, j);
-                    StringBuilder sbD = JSDataExchangeEditor.Build_DelegateFunction(type, method, paramS[j].ParameterType, i, j);
+                    // StringBuilder sbD = JSDataExchangeEditor.BuildFunctionArg_DelegateFunction(type.Name, method.Name, pInfo.ParameterType, i, j);
+                    StringBuilder sbD = JSDataExchangeEditor.Build_DelegateFunction(type, method,
+                        pInfo.ParameterType, i, j);
 
                     sb.Append(sbD);
                 }
@@ -1158,6 +1166,7 @@ static bool {0}(JSVCall vc, int argc)
         // class type
         public Type type;
 
+        public HashSet<string> nameSpaces;
         public List<string> fields;
         public List<string> properties;
         public List<string> constructors;
@@ -1210,7 +1219,7 @@ public static void __Register()
             if (ccbn.constructors.Count == 1 && ti.constructors.Length == 0) // no constructors   add a default  so ...
                 sbCons.AppendFormat("        new JSMgr.MethodCallBackInfo({0}, '{1}'),\n", 
                     ccbn.constructors[i],
-                    type.Name);
+                    cachedType.Name);
             else
                 sbCons.AppendFormat("        new JSMgr.MethodCallBackInfo({0}, '{1}'),\n", 
                     ccbn.constructors[i],
@@ -1228,34 +1237,36 @@ public static void __Register()
         sb.AppendFormat(fmt, JSNameMgr.GetTypeFullName(ccbn.type), sbField, sbProperty, sbCons, sbMethod);
         return sb;
     }
-    public static void GenerateRegisterAll()
-    {
-        string fmt = @"using UnityEngine;
-public class CSharpGenerated
+
+    private const string REGISTER_HEADER = @"using UnityEngine;
+public class CSGenerateRegister
 [[
     public static void RegisterAll()
     [[
         if (JSMgr.allCallbackInfo.Count != 0)
         [[
-            Debug.LogError(999777454);
+            Debug.LogError(""Has already register CS binding"");
         ]]
 {0}
     ]]
 ]]
 ";
+    static string registerFile = Application.dataPath + "/JSBinding/Source/CSGenerateRegister.cs";
+    public static void GenerateRegisterAll()
+    {
         StringBuilder sbA = new StringBuilder();
-        for (int i = 0; i < JSBindingSettings.classes.Length; i++)
+        for (int i = 0; i < exportTypeList.Count; i++)
         {
-            sbA.AppendFormat("        {0}Generated.__Register();\n", JSNameMgr.GetTypeFileName(JSBindingSettings.classes[i]));
+            sbA.AppendFormat("        {0}Generated.__Register();\n",
+                JSNameMgr.GetTypeFileName(exportTypeList[i]));
         }
         StringBuilder sb = new StringBuilder();
-        sb.AppendFormat(fmt, sbA);
+        sb.AppendFormat(REGISTER_HEADER, sbA);
         HandleStringFormat(sb);
 
         sb.Replace("\r\n", "\n");
 
-        string fileName = JSBindingSettings.csGeneratedDir + "/" + "CSharpGenerated.cs";
-        var writer2 = OpenFile(fileName, false);
+        var writer2 = OpenFile(registerFile, false);
         writer2.Write(sb.ToString());
         writer2.Close();
     }
@@ -1308,7 +1319,7 @@ public class CSharpGenerated
             sb.AppendFormat("CS.require(\"Generated/{0}\");\n", name);
         }
 
-        string fileName = JSBindingSettings.jsGeneratedFiles;
+        string fileName = JSPathSettings.jsGeneratedFiles;
         var writer2 = OpenFile(fileName, false);
         writer2.Write(sb.ToString());
         writer2.Close();
@@ -1323,7 +1334,7 @@ public class CSharpGenerated
 
         GeneratorHelp.ATypeInfo ti;
         /*int slot = */
-        GeneratorHelp.AddTypeInfo(type, out ti);
+        GeneratorHelp.AddTypeInfo(cachedType, out ti);
 //         var sbCons = BuildConstructors(type, ti.constructors, slot);
 //         var sbFields = BuildFields(type, ti.fields, slot);
 //         var sbProperties = BuildProperties(type, ti.properties, slot);
@@ -1333,7 +1344,7 @@ public class CSharpGenerated
 
         ClassCallbackNames ccbn = new ClassCallbackNames();
         {
-            ccbn.type = type;
+            ccbn.type = cachedType;
             ccbn.fields = new List<string>(ti.fields.Length);
             ccbn.properties = new List<string>(ti.properties.Length);
             ccbn.constructors = new List<string>(ti.constructors.Length);
@@ -1341,16 +1352,24 @@ public class CSharpGenerated
 
             ccbn.constructorsCSParam = new List<string>(ti.constructors.Length);
             ccbn.methodsCSParam = new List<string>(ti.methods.Length);
+            ccbn.nameSpaces = new HashSet<string>
+            {
+                "UnityEngine",
+                "System",
+                "System.Collections",
+                "System.Collections.Generic",
+                "System.Reflection",
+            };
         }
 
-        thisClassName = JSNameMgr.GetTypeFileName(type) + "Generated";
+        thisClassName = JSNameMgr.GetTypeFileName(cachedType) + "Generated";
 
-        var sbFields = BuildFields(type, ti.fields, ti.fieldsIndex, ccbn);
-        var sbProperties = BuildProperties(type, ti.properties, ti.propertiesIndex, ccbn);
-        var sbMethods = BuildMethods(type, ti.methods, ti.methodsIndex, ti.methodsOLInfo, ccbn);
-        var sbCons = BuildConstructors(type, ti.constructors, ti.constructorsIndex, ccbn);
+        var sbFields = BuildFields(cachedType, ti.fields, ti.fieldsIndex, ccbn);
+        var sbProperties = BuildProperties(cachedType, ti.properties, ti.propertiesIndex, ccbn);
+        var sbMethods = BuildMethods(cachedType, ti.methods, ti.methodsIndex, ti.methodsOLInfo, ccbn);
+        var sbCons = BuildConstructors(cachedType, ti.constructors, ti.constructorsIndex, ccbn);
         var sbRegister = BuildRegisterFunction(ccbn, ti);
-        var sbClass = BuildClass(type, sbFields, sbProperties, sbMethods, sbCons, sbRegister);
+        var sbClass = BuildClass(cachedType, sbFields, sbProperties, sbMethods, sbCons, sbRegister);
 
         /*
          * 0 typeName
@@ -1358,14 +1377,12 @@ public class CSharpGenerated
          * 2 type namespace
          */
         string fmtFile = @"
-using UnityEngine;
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.IO;
-using System.Reflection;
+//------------------------------------------------------------------------------
+// <auto-generated>
+// This code was generated by CSGenerator.
+// </auto-generated>
+//------------------------------------------------------------------------------
 {2}
-
 using jsval = JSApi.jsval;
 
 public class {0}
@@ -1374,28 +1391,24 @@ public class {0}
 ]]
 ";
         var sbFile = new StringBuilder();
-        string nameSpaceString = string.Empty;
-        if (type.Namespace != null)
+        StringBuilder nsBuilder = new StringBuilder();
+        if (cachedType.Namespace != null)
         {
-            nameSpaceString = type.Namespace;
-            if (nameSpaceString == "UnityEngine"
-                || nameSpaceString == "System"
-                || nameSpaceString == "System.Collections"
-                || nameSpaceString == "System.Collections.Generic"
-                || nameSpaceString == "System.IO"
-                || nameSpaceString == "System.Reflection"
-                )
-            {
-                nameSpaceString = string.Empty;
-            }
+            ccbn.nameSpaces.Add(cachedType.Namespace);
         }
-        sbFile.AppendFormat(fmtFile, thisClassName, sbClass, nameSpaceString.Length > 0 ? "using " + nameSpaceString + ";" : "");
+        //Generate Using NameSpace
+        foreach (var ns in ccbn.nameSpaces)
+        {
+            if (!string.IsNullOrEmpty(ns))
+                nsBuilder.AppendLine("using " + ns + ";");
+        }
+        sbFile.AppendFormat(fmtFile, thisClassName, sbClass, nsBuilder);
         HandleStringFormat(sbFile);
 
         sbFile.Replace("\r\n", "\n");
 
-        string fileName = JSBindingSettings.csGeneratedDir + "/" +
-            JSNameMgr.GetTypeFileName(type) + 
+        string fileName = JSPathSettings.csGeneratedDir + "/" +
+            JSNameMgr.GetTypeFileName(cachedType) + 
             "Generated.cs";
         var writer2 = OpenFile(fileName, false);
         writer2.Write(sbFile.ToString());
@@ -1404,7 +1417,7 @@ public class {0}
 
     public static void Clear()
     {
-        type = null;
+        cachedType = null;
         sb = new StringBuilder();
     }
     static void GenEnd()
@@ -1449,75 +1462,114 @@ using UnityEngine;
     {
 
     }
-    
+
+    public static List<Type> exportTypeList;
     public static bool CheckClassBindings()
     {
-        Dictionary<Type, bool> clrLibrary = new Dictionary<Type, bool>();
+        HashSet<Type> clrLibrary = new HashSet<Type>()
         {
             //
             // these types are defined in clrlibrary.javascript
             //
-            clrLibrary.Add(typeof(System.Object), true);
-            clrLibrary.Add(typeof(System.Exception), true);
-            clrLibrary.Add(typeof(System.SystemException), true);
-            clrLibrary.Add(typeof(System.ValueType), true);
-        }
+            typeof (System.Object),
+            typeof (System.Exception),
+            typeof (System.SystemException),
+            typeof (System.ValueType),
+        };
 
-        Dictionary<Type, bool> dict = new Dictionary<Type, bool>();
-        var sb = new StringBuilder();
-        bool ret = true;
+        HashSet<Type> exportTypeSet = new HashSet<Type>();
+        var logBuilder = new StringBuilder();
+        bool checkSuccess = true;
 
-        // can not export a type twice
+        Type delegateType = typeof(System.Delegate);
+        //验证JSBindingSettings.classes导出列表的正确性
         foreach (var type in JSBindingSettings.classes)
         {
-            if (typeof(System.Delegate).IsAssignableFrom(type))
+            //不能导出Delegate类型
+            if (delegateType.IsAssignableFrom(type))
             {
-                sb.AppendFormat("\"{0}\" Delegate can not be exported.\n",
+                logBuilder.AppendFormat("\"{0}\" Delegate can not be exported.\n",
                     JSNameMgr.GetTypeFullName(type));
-                ret = false;
+                checkSuccess = false;
             }
+            //不能导出带有JsType属性的类型
             if (JSSerializerEditor.WillTypeBeTranslatedToJavaScript(type))
             {
-                sb.AppendFormat("\"{0}\" has JsType attribute, it can not be in JSBindingSettings.classes at the same time.\n", 
+                logBuilder.AppendFormat(
+                    "\"{0}\" has JsType attribute, it can not be in JSBindingSettings.classes at the same time.\n",
                     JSNameMgr.GetTypeFullName(type));
-                ret = false;
+                checkSuccess = false;
             }
-
+            //不能导出具体的泛型类，如List<string>,只能导出List<>
             if (type.IsGenericType && !type.IsGenericTypeDefinition)
             {
-                sb.AppendFormat(
+                logBuilder.AppendFormat(
                     "\"{0}\" is not allowed. Try \"{1}\".\n",
                     JSNameMgr.GetTypeFullName(type), JSNameMgr.GetTypeFullName(type.GetGenericTypeDefinition()));
-                ret = false;
+                checkSuccess = false;
             }
-
-            if (dict.ContainsKey(type))
+            //检查JSBindingSettings.classes导出列表是否存在相同的导出类型
+            if (exportTypeSet.Contains(type))
             {
-                sb.AppendFormat(
+                logBuilder.AppendFormat(
                     "Operation fail. There are more than 1 \"{0}\" in JSBindingSettings.classes, please check.\n",
                     JSNameMgr.GetTypeFullName(type));
-                ret = false;
+                checkSuccess = false;
             }
             else
             {
-                dict.Add(type, true);
+                exportTypeSet.Add(type);
+            }
+        }
+
+        //将需要导出的dll里所有类型加入原始列表当中
+        foreach (var assemblyItem in JSBindingSettings.customAssembly)
+        {
+            Assembly assembly = Assembly.Load(assemblyItem.Key);
+            HashSet<string> exportNsSet = new HashSet<string>(assemblyItem.Value.Split('|'));
+            Type[] types = assembly.GetExportedTypes();
+            foreach (Type type in types)
+            {
+                if (type.Namespace != null && !exportNsSet.Contains(type.Namespace))
+                    continue;
+                if (type.IsInterface)
+                    continue;
+                if (type.IsEnum)
+                    continue; ;
+                if (delegateType.IsAssignableFrom(type))
+                    continue;
+                if (type.IsGenericType && !type.IsGenericTypeDefinition)
+                    continue;
+
+                exportTypeSet.Add(type);
+
+                Type baseType = type.BaseType;
+                if (baseType != null)
+                {
+                    if (baseType.IsGenericType) baseType = baseType.GetGenericTypeDefinition();
+                    // System.Object is already defined in SharpKit clrlibrary
+                    if (!clrLibrary.Contains(baseType))
+                    {
+                        exportTypeSet.Add(baseType);
+                    }
+                }
             }
         }
 
         // Is BaseType exported?
-        foreach (var typeb in dict)
+        //检查是否有导出父类
+        foreach (var type in exportTypeSet)
         {
-            Type type = typeb.Key;
             Type baseType = type.BaseType;
-            if (baseType == null) { continue;  }
+            if (baseType == null) continue;
             if (baseType.IsGenericType) baseType = baseType.GetGenericTypeDefinition();
             // System.Object is already defined in SharpKit clrlibrary
-            if (!clrLibrary.ContainsKey(baseType) && !dict.ContainsKey(baseType))
+            if (!clrLibrary.Contains(baseType) && !exportTypeSet.Contains(baseType))
             {
-                sb.AppendFormat("\"{0}\"\'s base type \"{1}\" must also be in JSBindingSettings.classes.\n",
+                logBuilder.AppendFormat("\"{0}\"\'s base type \"{1}\" must also be in JSBindingSettings.classes.\n",
                     JSNameMgr.GetTypeFullName(type),
                     JSNameMgr.GetTypeFullName(baseType));
-                ret = false;
+                checkSuccess = false;
             }
 
 			// 检查 interface 有没有配置		
@@ -1531,12 +1583,12 @@ using UnityEngine;
 				// 这个检查有点奇葩
 				// 有些接口带 <>，这里直接忽略，不检查他
 				if (!tiFullName.Contains("<") && tiFullName.Contains(">") && 
-				    !clrLibrary.ContainsKey(ti) && !dict.ContainsKey(ti))
+				    !clrLibrary.Contains(ti) && !exportTypeSet.Contains(ti))
 				{
-					sb.AppendFormat("\"{0}\"\'s interface \"{1}\" must also be in JSBindingSettings.classes.\n",
+					logBuilder.AppendFormat("\"{0}\"\'s interface \"{1}\" must also be in JSBindingSettings.classes.\n",
 					                JSNameMgr.GetTypeFullName(type),
 					                JSNameMgr.GetTypeFullName(ti));
-					ret = false;
+					checkSuccess = false;
 				}
 			}
 
@@ -1552,81 +1604,34 @@ using UnityEngine;
 //                 }
             //             }
         }
-        if (!ret)
+        if (!checkSuccess)
         {
-            Debug.LogError(sb);
+            Debug.LogError(logBuilder);
+            exportTypeList = null;
         }
-        return ret;
+        else
+        {
+            exportTypeList = new List<Type>(exportTypeSet);
+        }
+        return checkSuccess;
     }
 
     //[MenuItem("JSBinding/Generate CS Bindings")]
     public static void GenerateClassBindings()
     {
-//         typeClassName.Add(typeof(UnityEngine.Object), "UnityObject");
-
-//         Type t = typeof(Dictionary<int,string>);
-//         Debug.Log(t);
-//         Debug.Log(t.Name);
-//         Debug.Log(t.FullName);
-//         Debug.Log(t.ToString());
-//         Type tD = t.GetGenericTypeDefinition();
-//         Debug.Log(tD);
-//         Debug.Log(tD.Name);
-//         Debug.Log(tD.FullName);
-//         Debug.Log(tD.ToString());
-        //int op = 1;
-        //object oj = op;
-        //Debug.Log(GetTypeFullName(typeof(bool).MakeByRefType()));
-        //MakeJJJ(ref oj);
-//         {
-//             Type t = typeof(GameObject);
-//             MethodInfo[] methods = t.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static);
-//             for (int i = 0; i < methods.Length; i++ )
-//             {
-//                 MethodInfo method = methods[i];
-//                 if (method.Name != "AddComponent" || method.IsGenericMethod || method.IsGenericMethodDefinition)
-//                     continue;
-// 
-//                 ParameterInfo[] ps = method.GetParameters();
-//                 bool b1 = ps[0].ParameterType.IsGenericParameter;
-//                 bool b2 = ps[0].ParameterType.IsGenericType;
-//                 bool b3 = ps[0].ParameterType.IsGenericTypeDefinition;
-//                 Type[] ga = ps[0].ParameterType.GetGenericArguments();
-//                 Debug.Log(b1.ToString() + b2.ToString() + b3.ToString());
-//             }
-//         }
-        //return;
-// 
-
-        /*Type t = typeof(Kekoukele);
-        FieldInfo[] fields = t.GetFields(BindingFlags.Public | BindingFlags.GetField | BindingFlags.SetField | BindingFlags.Instance | BindingFlags.Static);
-		for (int i = 0; i < fields.Length; i++)
-		{
-			// if ( typeof(System.Delegate).IsAssignableFrom(fields[i].FieldType))
-            if (fields[i].FieldType.BaseType == typeof(System.MulticastDelegate))
-			{
-				Debug.Log (fields[i].FieldType.ToString () + " is delegate!"); 
-			}
-		}
-        return;*/
-
         CSGenerator.OnBegin();
 
-        allClassCallbackNames = null;
-        allClassCallbackNames = new List<ClassCallbackNames>(JSBindingSettings.classes.Length);
+        allClassCallbackNames = new List<ClassCallbackNames>(exportTypeList.Count);
 
-        for (int i = 0; i < JSBindingSettings.classes.Length; i++)
+        for (int i = 0; i < exportTypeList.Count; i++)
         {
             CSGenerator.Clear();
-            CSGenerator.type = JSBindingSettings.classes[i];
+            CSGenerator.cachedType = exportTypeList[i];
             CSGenerator.GenerateClass();
         }
         GenerateRegisterAll();
-        //GenerateAllJSFileNames();
 
         CSGenerator.OnEnd();
-
-        Debug.Log("Generate CS Bindings OK. total = " + JSBindingSettings.classes.Length.ToString());
     }
 
     public static void OuputGameObjectHierachy(StringBuilder sb, GameObject go, int tab)
@@ -1703,9 +1708,9 @@ using UnityEngine;
 
         bool bContinue;
         bContinue = EditorUtility.DisplayDialog("TIP",
-             "Files in these directories will all be deleted and re-created: \n" + 
+             "Files in these directories will all be deleted and re-created: \n" +
               //JSBindingSettings.jsGeneratedDir + "\n" + 
-              JSBindingSettings.csGeneratedDir + "\n",
+              JSPathSettings.csGeneratedDir + "\n",
              "OK",
              "Cancel");
         if (!bContinue)
@@ -1722,18 +1727,66 @@ using UnityEngine;
 
         // TODO
         // should not be here
-//         bContinue = EditorUtility.DisplayDialog("TIP",
-//              "Also correct JavaScript yield code?\n(Choose 'Yes' if you have coroutine code)",
-//              "Yes",
-//              "No");
-//         if (bContinue)
-//         {
-//             JSAnalyzer.CorrectJavaScriptYieldCode();
-//         }
+        //         bContinue = EditorUtility.DisplayDialog("TIP",
+        //              "Also correct JavaScript yield code?\n(Choose 'Yes' if you have coroutine code)",
+        //              "Yes",
+        //              "No");
+        //         if (bContinue)
+        //         {
+        //             JSAnalyzer.CorrectJavaScriptYieldCode();
+        //         }
+
+        Debug.Log(string.Format("<color={1}>Generate CS Bindings OK. total = {0}</color>", exportTypeList.Count, "orange"));
+        AssetDatabase.Refresh();
+    }
+
+    [MenuItem("JSB/Delete JS and CS Bindings", false, 1)]
+    public static void DeleteAllJSCSBindings()
+    {
+        bool bContinue = EditorUtility.DisplayDialog("TIP",
+            "Files in these directories will all be deleted: \n" +
+            //JSBindingSettings.jsGeneratedDir + "\n" + 
+            JSPathSettings.csGeneratedDir + "\n",
+            "OK",
+            "Cancel");
+        if (!bContinue)
+        {
+            Debug.Log("Operation cancelled");
+            return;
+        }
+
+        //删除所有C#导出类
+        if (Directory.Exists(JSPathSettings.csGeneratedDir))
+        {
+            string[] files = Directory.GetFiles(JSPathSettings.csGeneratedDir);
+            for (int i = 0; i < files.Length; i++)
+            {
+                File.Delete(files[i]);
+            }
+        }
+        else
+        {
+            Directory.CreateDirectory(JSPathSettings.csGeneratedDir);
+        }
+
+        //清空Register接口注册
+        StringBuilder sb = new StringBuilder();
+        sb.AppendFormat(REGISTER_HEADER, "");
+        HandleStringFormat(sb);
+        sb.Replace("\r\n", "\n");
+
+        var fileWriter = OpenFile(registerFile, false);
+        fileWriter.Write(sb.ToString());
+        fileWriter.Close();
+
+        //清空GeneratedFiles.javascript脚本内容
+        fileWriter = OpenFile(JSPathSettings.jsGeneratedFiles, false);
+        fileWriter.Write("this.Enum = {};\n");
+        fileWriter.Close();
 
         AssetDatabase.Refresh();
     }
-    
+
     //[MenuItem("Assets/JSBinding/1Output All T Functions")]
     public static void OutputAllTFunctionsInUnityEngine()
     {

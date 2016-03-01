@@ -1,4 +1,4 @@
-using System;
+ï»¿using System;
 using System.Text;
 using UnityEngine;
 using System.Collections.Generic;
@@ -827,7 +827,7 @@ public class JSDataExchange_Arr
         string getValMethod = JSDataExchangeMgr.GetMetatypeKeyword(elementType).Replace("get", "set");
 
         // 2015.Sep.2
-        // +ÅÐ¶ÏarrRetÎªnullµÄÇé¿ö
+        // +åˆ¤æ–­arrRetä¸ºnullçš„æƒ…å†µ
         if (elementType.ContainsGenericParameters)
         {
             sb.AppendFormat("    var arrRet = (Array){0};\n", expVar)
