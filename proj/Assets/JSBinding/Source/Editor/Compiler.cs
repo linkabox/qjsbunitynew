@@ -11,18 +11,18 @@ using Debug = UnityEngine.Debug;
 
 public class Compiler
 {
-    static bool CallSharpKitToCompile(string allInvokeOutputPath, string allInvokeWithLocationOutputPath, string YieldReturnTypeOutputPath)
+	private const string OUTPUT_PATH = "Temp/obj/Debug/SharpKitProj.dll";
+	private static bool _rebuild = false;
+
+	static bool CallSharpKitToCompile(string allInvokeOutputPath, string allInvokeWithLocationOutputPath, string YieldReturnTypeOutputPath)
     {
-        string workingDir = Application.dataPath.Replace("/Assets", "").Replace("/", "\\");
+		string workingDir = Application.dataPath.Replace("/Assets", "");
 
         cg.args args = new cg.args();
 
-        // working dir
-        if (workingDir.Contains(" "))
-            args.AddFormat("/dir:\"{0}\"", workingDir);
-        else
-            args.AddFormat("/dir:{0}", workingDir);
-
+		// working dir
+		args.AddFormat("/dir:\"{0}\"", workingDir);
+        
         // define		
         string define = "TRACE";
 
@@ -61,28 +61,25 @@ public class Compiler
 #if UNITY_5_3
         define += ";UNITY_5_3";
 #endif
-
-        // NOVA!
-        if (PlayerSettings.GetScriptingDefineSymbolsForGroup(BuildTargetGroup.Standalone).IndexOf("USEAB") >= 0)
-            define += ";USEAB";
+		//在这里可以加入自定义宏
+//        if (PlayerSettings.GetScriptingDefineSymbolsForGroup(BuildTargetGroup.Standalone).IndexOf("USEAB") >= 0)
+//            define += ";USEAB";
 
         args.AddFormat("/define:{0}", define);
 
+		if (_rebuild)
+			args.Add ("/rebuild");
+		
         // references
         System.Reflection.Assembly[] assemblies = System.AppDomain.CurrentDomain.GetAssemblies();
 
         foreach (var asm in assemblies)
         {
-            string r = asm.Location;
-
-            if (r.Contains(" "))
-                args.AddFormat("/reference:\"{0}\"", r.Replace("/", "\\"));
-            else
-                args.AddFormat("/reference:{0}", r.Replace("/", "\\"));
+			args.AddFormat("/reference:\"{0}\"", asm.Location);
         }
 
         // out, target, target framework version
-        args.Add("/out:obj/Debug/SharpKitProj.dll");
+		args.Add("/out:"+OUTPUT_PATH);
         args.Add("/target:library");
         args.Add("/TargetFrameworkVersion:v3.5");
         args.AddFormat("/AllInvocationsOutput:\"{0}\"", allInvokeOutputPath);
@@ -90,13 +87,14 @@ public class Compiler
         args.AddFormat("/YieldReturnTypeOutput:\"{0}\"", YieldReturnTypeOutputPath);
 
         // source files
-        string[] sources = Directory.GetFiles(Application.dataPath, "*.cs", SearchOption.AllDirectories);
+		string[] sources = Directory.GetFiles(Application.dataPath, "*.cs", SearchOption.AllDirectories);
         foreach (var filePath in sources)
         {
+			//Ignore Editor Folder *.cs files
             if(filePath.Contains("Editor"))
                 continue;
-
-            args.Add("\"" + filePath.Replace("/", "\\") + "\"");
+			
+			args.Add("\"" + filePath.Replace(workingDir,".") + "\"");
         }
 
         // 把参数写到文件中，然后把这个文件路径做为参数传递给 skc5.exe
@@ -104,26 +102,36 @@ public class Compiler
         string strArgs = args.Format(cg.args.ArgsFormat.Space);
         File.WriteAllText(argFile, strArgs);
 
-        string exePath = workingDir + "\\Compiler\\skc5.exe";
+		//windows下直接调用skc5编译，mac下需要通过mono调用skc5
+#if UNITY_EDITOR_WIN
+		string exePath = Path.Combine(workingDir,"Compiler/skc5.exe");
+		string arguments = "\"" + argFile + "\"";
+#else
+		string exePath = "/usr/local/bin/mono";
+		string arguments = Path.Combine(workingDir,"Compiler/skc5.exe") + " \"" + argFile + "\"";
+#endif
         ProcessStartInfo processInfo = new ProcessStartInfo
         {
-            CreateNoWindow = false,
-            UseShellExecute = true,
-            RedirectStandardOutput = false,
+			CreateNoWindow = true,
+			UseShellExecute = false,
+			RedirectStandardOutput = true,
+			RedirectStandardError = true,
             FileName = exePath,
-            Arguments = "\"" + argFile + "\"",
+			Arguments = arguments,
         };
 
         System.Diagnostics.Process process = Process.Start(processInfo);
-        //string outputLog = process.StandardOutput.ReadToEnd();
+		string outputLog = process.StandardOutput.ReadToEnd ();
+		string errorLog = process.StandardError.ReadToEnd ();
         // 等待结束
         process.WaitForExit();
 
+		Debug.LogError(outputLog);
         int exitCode = process.ExitCode;
         if (exitCode != 0)
         {
             EditorUtility.DisplayDialog("SharpKitCompiler", "Compile failed. exit code = " + exitCode, "OK");
-            //Debug.LogError(outputLog);
+			Debug.LogError(errorLog);
             return false;
         }
         else
@@ -437,7 +445,20 @@ public class Compiler
             Debug.LogError(sb.ToString());
     }
 
-    [MenuItem("JSB/Compile Cs to Js", false, 130)]
+    [MenuItem("JSB/Build Cs to Js", false, 130)]
+	public static void BuildJsCode()
+	{
+		_rebuild = false;
+		CompileCsToJs ();
+	}
+
+	[MenuItem("JSB/Rebuild Cs to Js", false, 131)]
+	public static void RebuildJsCode()
+	{
+		_rebuild = true;
+		CompileCsToJs ();
+	}
+
     public static void CompileCsToJs()
     {
         // 这个用于查看
@@ -448,7 +469,7 @@ public class Compiler
         string YieldReturnTypeOutputPath = JSAnalyzer.GetTempFileNameFullPath("YieldReturnTypes.txt");
 
         // 编译
-        if (!CallSharpKitToCompile(allInvokeOutputPath, allInvokeWithLocationOutputPath, YieldReturnTypeOutputPath))
+		if (!CallSharpKitToCompile(allInvokeOutputPath, allInvokeWithLocationOutputPath, YieldReturnTypeOutputPath))
         {
             return;
         }

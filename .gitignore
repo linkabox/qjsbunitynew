@@ -1,8 +1,12 @@
 .DS_Store
+*.csproj
+*.sln
+*.userprefs
 Library
 Temp
 UnityVS
 AssetStoreTools
+proj/obj
 obj/*
 /Assets/AssetStoreTools.meta
 /Assets/UnityVS.meta
