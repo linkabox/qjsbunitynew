@@ -4,7 +4,7 @@
 *.userprefs
 Library
 Temp
-UnityVS
+UnityVS*
 AssetStoreTools
 proj/obj
 obj/*
