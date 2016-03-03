@@ -5,8 +5,6 @@
 Library
 Temp
 UnityVS*
-AssetStoreTools
-proj/obj
+AssetStoreTools*
 obj/*
-/Assets/AssetStoreTools.meta
-/Assets/UnityVS.meta
+JsTypeGenerator*

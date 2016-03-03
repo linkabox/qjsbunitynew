@@ -108,10 +108,10 @@ public class Compiler
         //windows下直接调用skc5编译，mac下需要通过mono调用skc5
 #if UNITY_EDITOR_WIN
         string exePath = Path.Combine(workingDir, "Compiler/skc5.exe");
-        string arguments = "\"" + argFile + "\"";
+        string arguments = string.Format("/paramFile:\"{0}\"", argFile);
 #else
 		string exePath = "/usr/local/bin/mono";
-		string arguments = Path.Combine(workingDir,"Compiler/skc5.exe") + " \"" + argFile + "\"";
+		string arguments = Path.Combine(workingDir,"Compiler/skc5.exe") + string.Format(" /paramFile:\"{0}\"",argFile);
 #endif
         var processInfo = new ProcessStartInfo
         {
@@ -293,7 +293,7 @@ public class Compiler
                 "ctor$$TKey$$TValue"
             };
             typesImpByJs["System.Collections.Generic.Dictionary.ValueCollection$2"] = new List<string> {"CopyTo"};
-                // 特殊！
+            // 特殊！
             typesImpByJs["System.Collections.Generic.Dictionary.KeyCollection$2"] = new List<string> {"CopyTo"}; // 特殊！
             typesImpByJs["System.Linq.Enumerable"] = new List<string> {"Static_ToArray$1"};
             typesImpByJs["System.Collections.Generic.HashSet$1"] = new List<string>
