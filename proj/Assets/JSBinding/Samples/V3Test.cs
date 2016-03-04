@@ -3,7 +3,7 @@ using UnityEngine;
 using System.Collections;
 using System.Text;
 
-[JsType(JsMode.Clr)]
+
 public class V3Test : MonoBehaviour 
 {
 	// Use this for initialization

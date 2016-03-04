@@ -5,7 +5,7 @@ using System.Collections;
 using System.IO;
 using System.Text;
 
-[JsType(JsMode.Clr)]
+
 public class StreamTest : MonoBehaviour
 {
     // Use this for initialization

@@ -6,7 +6,7 @@ using System;
 
 namespace jsimp
 {
-[JsType(JsMode.Clr)]
+
     public static class Misc
     {
         [JsMethod(Code = @"return str.replace(str1, str2);")]

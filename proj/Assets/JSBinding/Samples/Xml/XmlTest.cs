@@ -7,13 +7,13 @@ using System;
 using System.Reflection;
 using Lavie;
 
-[JsType(JsMode.Clr)]
+
 public class MindActUpMide<T>
 {
     public T Value;
 }
 
-[JsType(JsMode.Clr)]
+
 public class XmlTest : MonoBehaviour
 {
     private void Start()
@@ -59,7 +59,7 @@ public class XmlTest : MonoBehaviour
     }
 }
 
-[JsType(JsMode.Clr)]
+
 public class ShopItemData
 {
     public string ID { get; set; }
@@ -102,43 +102,43 @@ public class ShopItemData
     }
 }
 
-[JsType(JsMode.Clr)]
+
 public class LimitDayNum : IShopLime
 {
     public int Count { get; set; }
 }
 
-[JsType(JsMode.Clr)]
+
 public class LimitVIPLevel
 {
     public int Level { get; set; }
 }
 
-[JsType(JsMode.Clr)]
+
 public class LimitBuyNumPrices : IShopLime
 {
     public int[] Prices{get;set;}
 }
 
-[JsType(JsMode.Clr)]
+
 public class LimitVipDayNum : IShopLime
 {
     public int[] Count { get; set; }
 }
 
-[JsType(JsMode.Clr)]
+
 public class LimeTimeNum : IShopLime
 {
     public int Interval { get; set; }
     public int Count { get; set; }
 }
 
-[JsType(JsMode.Clr)]
+
 public interface IShopLime
 {
 }
 
-[JsType(JsMode.Clr)]
+
 public enum ItemType
 {
     Normal = 1,
@@ -153,7 +153,7 @@ public enum ItemType
     Stone = 10,
 }
 
-[JsType(JsMode.Clr)]
+
 public class ItemCell
 {
     public int ID { get; set; }
@@ -174,7 +174,7 @@ public class ItemCell
     public int expSupply { get; set; }
 }
 
-[JsType(JsMode.Clr)]
+
 public enum ColorSign
 {
     White = 1,
@@ -186,7 +186,7 @@ public enum ColorSign
     Black
 }
 
-[JsType(JsMode.Clr)]
+
 public enum enumMoneyType
 {
     None = 0,

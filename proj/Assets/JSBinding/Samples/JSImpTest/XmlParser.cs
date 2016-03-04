@@ -5,7 +5,7 @@ using System.Collections.Generic;
 
 //
 
-[JsType(JsMode.Clr)]
+
 public class XmlParser
 {
     public static T ComvertType<T>(Dictionary<string, string> dict)

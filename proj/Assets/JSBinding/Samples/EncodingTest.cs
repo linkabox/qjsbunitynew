@@ -5,7 +5,7 @@ using System.Text;
 
 // JS VERSION OF THIS TEST DOES NOT WORK
 
-[JsType(JsMode.Clr)]
+
 public class EncodingTest : MonoBehaviour 
 {
     public static string byteConverString(byte[] data, int index, int count)

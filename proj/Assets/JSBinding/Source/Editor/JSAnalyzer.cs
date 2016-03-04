@@ -1,11 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
-using System.Reflection;
 using System.Text;
-using System.Text.RegularExpressions;
+using cg;
 using UnityEditor;
 using UnityEngine;
+using Debug = UnityEngine.Debug;
 
 public static class JSAnalyzer
 {
@@ -54,7 +55,7 @@ public static class JSAnalyzer
 
             // if this MonoBehaviour refer to another MonoBehaviour (A)
             // A must be export or compiled to JavaScript as well
-            if (typeof (MonoBehaviour).IsAssignableFrom(fieldType))
+            if (typeof(MonoBehaviour).IsAssignableFrom(fieldType))
             {
                 if (!JSSerializerEditor.WillTypeBeAvailableInJavaScript(fieldType))
                 {
@@ -110,90 +111,90 @@ public static class JSAnalyzer
         switch (op)
         {
             case TraverseOp.CopyMonoBehaviour:
-            {
-                bool bReplaced = JSSerializerEditor.CopyGameObject(go);
-                if (bReplaced && !hasReplaced)
                 {
-                    hasReplaced = true;
-                    sbLog.Append(" (REPLACED)");
+                    bool bReplaced = JSSerializerEditor.CopyGameObject(go);
+                    if (bReplaced && !hasReplaced)
+                    {
+                        hasReplaced = true;
+                        sbLog.Append(" (REPLACED)");
+                    }
                 }
-            }
                 break;
             case TraverseOp.RemoveOldBehaviour:
-            {
-                JSSerializerEditor.RemoveOtherMonoBehaviours(go);
-            }
+                {
+                    JSSerializerEditor.RemoveOtherMonoBehaviours(go);
+                }
                 break;
             case TraverseOp.Analyze:
-            {
-                var coms = go.GetComponents(typeof (MonoBehaviour));
-
-                // Calculate MonoBehaviour's Count
-                // Only check scripts that has JsType attribute
-                var dictMono = new Dictionary<Type, int>();
-                for (int c = 0; c < coms.Length; c++)
                 {
-                    var mb = (MonoBehaviour) coms[c];
-                    if (mb == null)
-                    {
-                        CheckHasError = true;
-                        Debug.LogError("Null MonoBehaviour found, gameObject name: " + go.name);
-                        continue;
-                    }
+                    var coms = go.GetComponents(typeof(MonoBehaviour));
 
-                    if (JSSerializerEditor.WillTypeBeTranslatedToJavaScript(mb.GetType()))
+                    // Calculate MonoBehaviour's Count
+                    // Only check scripts that has JsType attribute
+                    var dictMono = new Dictionary<Type, int>();
+                    for (int c = 0; c < coms.Length; c++)
                     {
-                        if (!dictMono.ContainsKey(mb.GetType()))
-                            dictMono.Add(mb.GetType(), 1);
-                        else
-                            dictMono[mb.GetType()]++;
-                    }
-                }
-                foreach (var t in dictMono)
-                {
-                    if (!hasChecked)
-                    {
-                        hasChecked = true;
-                        sbLog.Append(" (CHECKED)");
-                    }
-
-                    if (t.Value > 1)
-                    {
-                        if (!hasError)
+                        var mb = (MonoBehaviour)coms[c];
+                        if (mb == null)
                         {
-                            hasError = true;
-                            sbLog.Append(" ERROR: ");
-                        }
-                        CheckHasError = true;
-                        sbLog.AppendFormat("Same MonoBehaviour more than once. Name: {0}, Count: {1} ", t.Key.Name,
-                            t.Value);
-                    }
-                }
-
-                for (int c = 0; c < coms.Length; c++)
-                {
-                    var mb = (MonoBehaviour) coms[c];
-                    if (mb == null)
-                    {
-                        continue;
-                    }
-                    if (JSSerializerEditor.WillTypeBeTranslatedToJavaScript(mb.GetType()))
-                    {
-                        var lstError = ExamMonoBehaviour(mb);
-                        if (lstError.Count > 0)
                             CheckHasError = true;
-                        for (int x = 0; x < lstError.Count; x++)
+                            Debug.LogError("Null MonoBehaviour found, gameObject name: " + go.name);
+                            continue;
+                        }
+
+                        if (JSSerializerEditor.WillTypeBeTranslatedToJavaScript(mb.GetType()))
+                        {
+                            if (!dictMono.ContainsKey(mb.GetType()))
+                                dictMono.Add(mb.GetType(), 1);
+                            else
+                                dictMono[mb.GetType()]++;
+                        }
+                    }
+                    foreach (var t in dictMono)
+                    {
+                        if (!hasChecked)
+                        {
+                            hasChecked = true;
+                            sbLog.Append(" (CHECKED)");
+                        }
+
+                        if (t.Value > 1)
                         {
                             if (!hasError)
                             {
                                 hasError = true;
                                 sbLog.Append(" ERROR: ");
                             }
-                            sbLog.Append(lstError[x] + " ");
+                            CheckHasError = true;
+                            sbLog.AppendFormat("Same MonoBehaviour more than once. Name: {0}, Count: {1} ", t.Key.Name,
+                                t.Value);
+                        }
+                    }
+
+                    for (int c = 0; c < coms.Length; c++)
+                    {
+                        var mb = (MonoBehaviour)coms[c];
+                        if (mb == null)
+                        {
+                            continue;
+                        }
+                        if (JSSerializerEditor.WillTypeBeTranslatedToJavaScript(mb.GetType()))
+                        {
+                            var lstError = ExamMonoBehaviour(mb);
+                            if (lstError.Count > 0)
+                                CheckHasError = true;
+                            for (int x = 0; x < lstError.Count; x++)
+                            {
+                                if (!hasError)
+                                {
+                                    hasError = true;
+                                    sbLog.Append(" ERROR: ");
+                                }
+                                sbLog.Append(lstError[x] + " ");
+                            }
                         }
                     }
                 }
-            }
                 break;
             default:
                 break;
@@ -299,7 +300,7 @@ public static class JSAnalyzer
 ");
 
         CheckHasError = false;
-        var ops = new[] {TraverseOp.Analyze};
+        var ops = new[] { TraverseOp.Analyze };
         foreach (var op in ops)
         {
             // 遍历所有场景
@@ -329,7 +330,7 @@ public static class JSAnalyzer
                     Debug.Log("Check Prefab: " + p);
                     sbLog.AppendFormat("FILE: {0}\n", p);
 
-                    TraverseGameObject(sbLog, (GameObject) mainAsset, 1, op);
+                    TraverseGameObject(sbLog, (GameObject)mainAsset, 1, op);
                     sbCheckLog.Append(sbLog + "\n");
                 }
             }
@@ -430,7 +431,7 @@ public static class JSAnalyzer
 
         // first copy
         // then remove
-        var ops = new[] {TraverseOp.CopyMonoBehaviour, TraverseOp.RemoveOldBehaviour};
+        var ops = new[] { TraverseOp.CopyMonoBehaviour, TraverseOp.RemoveOldBehaviour };
         foreach (var op in ops)
         {
             foreach (string p in lstScenes)
@@ -455,7 +456,7 @@ public static class JSAnalyzer
                 var mainAsset = AssetDatabase.LoadMainAssetAtPath(p);
                 if (mainAsset is GameObject)
                 {
-                    TraverseGameObject(sbLog, (GameObject) mainAsset, 1, op);
+                    TraverseGameObject(sbLog, (GameObject)mainAsset, 1, op);
                     sbCheckLog.Append(sbLog + "\n");
                 }
             }
@@ -605,7 +606,7 @@ public static class JSAnalyzer
             {
                 if (JSSerializerEditor.WillTypeBeTranslatedToJavaScript(t))
                 {
-                    if (t.IsSubclassOf(typeof (MonoBehaviour)))
+                    if (t.IsSubclassOf(typeof(MonoBehaviour)))
                     {
                         string jsComponentName = JSComponentGenerator.GetJSComponentClassName(t);
                         mono2JsCom.Add(JSNameMgr.GetTypeFullName(t, false), jsComponentName);
@@ -624,7 +625,7 @@ public static class JSAnalyzer
 
     #region 添加JsType属性标记
 
-    public const string JsTypeInfoFileFormat = @"
+    public const string JsTypeInfoFileTemplate = @"
 //------------------------------------------------------------------------------
 // <auto-generated>
 // This code was generated by CSGenerator.
@@ -638,19 +639,27 @@ using SharpKit.JavaScript;
 {0}
 #endregion";
 
-    public static string JsTypeInfoFile = Application.dataPath +
-                                          "/JSBinding/Source/JsTypeInfo.cs";
+    public const string JsTypeFormat = @"[assembly: JsType(TargetTypeName = ""{0}"", Mode = JsMode.Clr)]";
+
+    public static readonly string JsTypeInfoFile = Application.dataPath +
+                                                   "/JSBinding/Source/JsTypeInfo.cs";
 
     [MenuItem("JSB/Add SharpKit JsType Attribute for all Structs and Classes", false, 51)]
     public static void GenerateJsTypeInfo()
     {
-        var fileBuilder = new StringBuilder();
-        string srcFolder = Application.dataPath;
-        var files = Directory.GetFiles(srcFolder, "*.cs", SearchOption.AllDirectories);
-        var exportFileList = new List<string>();
+        string workingDir = Application.dataPath.Replace("/Assets", "");
+        var args = new args();
 
+        // working dir
+        args.AddFormat("/dir:\"{0}\"", workingDir);
+        args.AddFormat("/out:\"{0}\"", JsTypeInfoFile);
+        args.AddFormat("/template:\"{0}\"", JsTypeInfoFileTemplate);
+        args.AddFormat("/format:\"{0}\"", JsTypeFormat);
+
+        var csFiles = Directory.GetFiles(Application.dataPath, "*.cs", SearchOption.AllDirectories);
+        int exportCount = 0;
         // filter files
-        foreach (string file in files)
+        foreach (string file in csFiles)
         {
             string filePath = file.Replace('\\', '/');
             bool export = true;
@@ -685,101 +694,67 @@ using SharpKit.JavaScript;
             }
             if (export)
             {
-                fileBuilder.Append(filePath + "\r\n");
-                exportFileList.Add(filePath);
+                exportCount++;
+                args.Add("\"" + filePath.Replace(workingDir, ".") + "\"");
             }
         }
 
-        string fileName = GetTempFileNameFullPath("FilesToAddJsType.txt");
-        File.WriteAllText(fileName, fileBuilder.ToString());
+        // 把参数写到文件中，然后把这个文件路径做为参数传递给 skc5.exe
+        string argFile = GetTempFileNameFullPath("JsTypeGenerator_Args.txt");
+        string strArgs = args.Format(args.ArgsFormat.Space);
+        File.WriteAllText(argFile, strArgs);
+        AssetDatabase.Refresh();
 
         if (!EditorUtility.DisplayDialog("TIP",
-            "Total: " + exportFileList.Count + "file prepare to Add [JsType]",
+            "Total: " + exportCount + "file prepare to Add [JsType]",
             "OK",
             "Cancel"))
         {
             Debug.Log("Operation canceled.");
+        }
+
+#if UNITY_EDITOR_WIN
+        string exePath = Path.Combine(workingDir, "JsTypeGenerator/JsTypeGenerator.exe");
+        string arguments = string.Format("/paramFile:\"{0}\"", argFile);
+#else
+        string exePath = "/usr/local/bin/mono";
+        string arguments = Path.Combine(workingDir,"JsTypeGenerator/JsTypeGenerator.exe") + string.Format(" /paramFile:\"{0}\"",argFile);
+#endif
+        var processInfo = new ProcessStartInfo
+        {
+            CreateNoWindow = true,
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            FileName = exePath,
+            Arguments = arguments
+        };
+
+        var process = Process.Start(processInfo);
+        string outputLog = process.StandardOutput.ReadToEnd();
+        string errorLog = process.StandardError.ReadToEnd();
+        // 等待结束
+        process.WaitForExit();
+
+        Debug.LogError(outputLog);
+        int exitCode = process.ExitCode;
+        if (exitCode != 0)
+        {
+            EditorUtility.DisplayDialog("JsTypeGenerator", "Generate failed. exit code = " + exitCode, "OK");
+            if (!string.IsNullOrEmpty(errorLog))
+                Debug.LogError(errorLog);
+
             return;
         }
 
-        var logBuilder = new StringBuilder();
-        fileBuilder.Length = 0;
-
-        Assembly logicCodeLib = null;
-        var assemblyList = AppDomain.CurrentDomain.GetAssemblies();
-        foreach (var assembly in assemblyList)
-        {
-            if (assembly.GetName().Name.Equals("Assembly-CSharp"))
-            {
-                logicCodeLib = assembly;
-                break;
-            }
-        }
-
-        if (logicCodeLib != null)
-        {
-            var typeList = logicCodeLib.GetTypes();
-            var typeDic = new Dictionary<string, Type>(typeList.Length);
-            foreach (var type in typeList)
-            {
-                if (typeDic.ContainsKey(type.Name))
-                {
-                    Debug.LogError(type.Name);
-                }
-                else
-                {
-                    typeDic.Add(type.Name, type);
-                }
-            }
-
-            foreach (string filePath in exportFileList)
-            {
-                try
-                {
-                    string content = File.ReadAllText(filePath);
-                    var regex =
-                        new Regex(
-                            @"(?>^\s*\[\s*JsType.*$)?\s*(?<ClassDefinition>^(?>(?>public|protected|private|static|partial|abstract|internal|sealed)*\s*)*(?>class|struct|enum|interface)\s+(?<ClassName>\w+))",
-                            RegexOptions.Multiline);
-
-                    var matchResult = regex.Match(content);
-                    while (matchResult.Success)
-                    {
-                        string className = matchResult.Groups["ClassName"].Value;
-                        if (typeDic.ContainsKey(className))
-                        {
-                            string fullName = typeDic[className].FullName;
-                            fileBuilder.AppendFormat("[assembly: JsType(TargetTypeName = \"{0}\", Mode = JsMode.Clr)]",
-                                fullName);
-                            fileBuilder.AppendLine();
-                        }
-                        else
-                        {
-                            logBuilder.AppendLine(string.Format("[{0}] GetType failed", className));
-                        }
-                        matchResult = matchResult.NextMatch();
-                    }
-                }
-                catch (Exception e)
-                {
-                    Debug.LogError(e.Message);
-                }
-            }
-
-            File.WriteAllText(JsTypeInfoFile, string.Format(JsTypeInfoFileFormat, fileBuilder));
-
-            if (logBuilder.Length > 0)
-                Debug.LogError(logBuilder.ToString());
-
-            EditorUtility.DisplayDialog("Tip", "GenerateJsTypeInfo Success!", "OK");
-            AssetDatabase.Refresh();
-        }
+        EditorUtility.DisplayDialog("JsTypeGenerator", "GenerateJsTypeInfo success.", "OK");
+        AssetDatabase.Refresh();
     }
 
     [MenuItem("JSB/Delete SharpKit JsType Attribute for all Structs and Classes", false, 52)]
     public static void RemoveJsTypeAttribute()
     {
-        File.WriteAllText(JsTypeInfoFile, string.Format(JsTypeInfoFileFormat, ""));
+        File.WriteAllText(JsTypeInfoFile, string.Format(JsTypeInfoFileTemplate, ""));
         EditorUtility.DisplayDialog("Tip", "RemoveJsTypeAttribute Success!", "OK");
         AssetDatabase.Refresh();
     }

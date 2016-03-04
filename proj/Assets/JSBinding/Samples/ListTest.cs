@@ -4,7 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 // test System.Collections.Generic.List
 
-[JsType(JsMode.Clr)]
+
 public class ListTest : MonoBehaviour {
 
 	// Use this for initialization

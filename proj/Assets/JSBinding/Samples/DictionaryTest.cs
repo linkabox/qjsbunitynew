@@ -3,7 +3,7 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 
-[JsType(JsMode.Clr)]
+
 public class DictionaryTest : MonoBehaviour {
 
 	// Use this for initialization

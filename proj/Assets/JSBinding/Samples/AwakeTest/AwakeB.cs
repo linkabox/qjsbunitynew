@@ -2,7 +2,7 @@ using SharpKit.JavaScript;
 using UnityEngine;
 using System.Collections;
 
-[JsType(JsMode.Clr)]
+
 public class AwakeB : MonoBehaviour {
 
     public int valueOfB = 0;

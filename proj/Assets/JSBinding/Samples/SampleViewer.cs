@@ -2,7 +2,7 @@ using SharpKit.JavaScript;
 using UnityEngine;
 using System.Collections;
 
-[JsType(JsMode.Clr)]
+
 public class SampleViewer : MonoBehaviour
 {
     static SampleViewer inst = null;
@@ -36,7 +36,7 @@ public class SampleViewer : MonoBehaviour
 
     }
 
-[JsType(JsMode.Clr)]
+
     struct stScene
     {
         public string levelName;

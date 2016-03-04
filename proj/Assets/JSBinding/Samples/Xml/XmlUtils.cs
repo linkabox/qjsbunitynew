@@ -11,7 +11,7 @@ using Lavie;
 namespace Lavie
 {
 
-[JsType(JsMode.Clr)]
+
     public static class XmlUtils
     {
         public static void AssignObjectValueFromXml(this XmlNode mNode, object mData, Type mDataType)

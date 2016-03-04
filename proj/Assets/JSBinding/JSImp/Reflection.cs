@@ -14,7 +14,7 @@ using System.Reflection;
 /// </summary>
 namespace jsimp
 {
-[JsType(JsMode.Clr)]
+
     public class Reflection
 	{
 		/// <summary>

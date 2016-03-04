@@ -2,11 +2,11 @@ using SharpKit.JavaScript;
 using UnityEngine;
 using System.Collections;
 
-[JsType(JsMode.Clr)]
+
 public class Wheel : MonoBehaviour
 {
 
-[JsType(JsMode.Clr)]
+
     public enum Pos
     {
         LeftFront,

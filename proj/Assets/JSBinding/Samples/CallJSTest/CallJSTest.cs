@@ -4,7 +4,7 @@ using System.Collections;
 
 // 这个是跑在C#的
 
-[JsType(JsMode.Clr)]
+
 public class CallJSTest : MonoBehaviour {
 
 	// Use this for initialization

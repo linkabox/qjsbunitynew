@@ -5,7 +5,7 @@ using System;
 
 //此类做CS and JS bindings
 
-[JsType(JsMode.Clr)]
+
 public class LoginManager
 {
     private static LoginManager _instance;
@@ -27,7 +27,7 @@ public class LoginManager
 
 //此类转JS
 
-[JsType(JsMode.Clr)]
+
 public class TestLogin
 {
     private void Dofun()
@@ -40,7 +40,7 @@ public class TestLogin
     }
 }
 
-[JsType(JsMode.Clr)]
+
 public class EventTest : MonoBehaviour {
 
 	// Use this for initialization

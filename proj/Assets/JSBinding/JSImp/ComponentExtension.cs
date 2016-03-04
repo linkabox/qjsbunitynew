@@ -1,7 +1,7 @@
 ﻿using SharpKit.JavaScript;
 using UnityEngine;
 using System.Collections;
-[JsType(JsMode.Clr)]
+
 public static class ComponentExtension
 {
     [JsMethod(Code = @"return com.GetComponent$1(T);")]

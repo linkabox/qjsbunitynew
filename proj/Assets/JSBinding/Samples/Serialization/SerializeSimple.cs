@@ -3,7 +3,7 @@ using System;
 using UnityEngine;
 using System.Collections;
 
-[JsType(JsMode.Clr)]
+
 public class SerializeSimple : MonoBehaviour 
 {
     public int age;
