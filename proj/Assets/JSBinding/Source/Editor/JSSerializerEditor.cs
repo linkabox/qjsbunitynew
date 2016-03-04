@@ -435,9 +435,19 @@ public static class JSSerializerEditor
     /// <returns></returns>
     public static bool WillTypeBeTranslatedToJavaScript(Type type)
     {
-        System.Object[] attrs = type.GetCustomAttributes(typeof(JsTypeAttribute), false);
-        bool bToJS = attrs.Length > 0;
-        return bToJS;
+        var typeAttrs = type.GetCustomAttributes(typeof(JsTypeAttribute), false);
+        if (typeAttrs.Length > 0)
+            return true;
+
+        var assemblyAttrs = typeof(JSAnalyzer).Assembly.GetCustomAttributes(typeof(JsTypeAttribute), false);
+        foreach (var attr in assemblyAttrs)
+        {
+            JsTypeAttribute jsAttr = attr as JsTypeAttribute;
+            if (jsAttr.TargetTypeName == type.FullName)
+                return true;
+        }
+
+        return false;
     }
     /// <summary>
     /// Wills the type be exported to java script.

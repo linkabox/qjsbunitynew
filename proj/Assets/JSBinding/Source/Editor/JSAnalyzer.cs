@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 using System.Text;
 using cg;
 using UnityEditor;
@@ -599,14 +600,24 @@ public static class JSAnalyzer
     {
         var mono2JsCom = new Dictionary<string, string>();
 
-        foreach (var a in AppDomain.CurrentDomain.GetAssemblies())
+        Assembly logicCodeLib = null;
+        foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
         {
-            var types = a.GetTypes();
+            if (assembly.GetName().Name == "Assembly-CSharp")
+            {
+                logicCodeLib = assembly;
+                break;
+            }
+        }
+
+        if (logicCodeLib != null)
+        {
+            var types = logicCodeLib.GetTypes();
             foreach (var t in types)
             {
                 if (JSSerializerEditor.WillTypeBeTranslatedToJavaScript(t))
                 {
-                    if (t.IsSubclassOf(typeof(MonoBehaviour)))
+                    if (t.IsSubclassOf(typeof (MonoBehaviour)))
                     {
                         string jsComponentName = JSComponentGenerator.GetJSComponentClassName(t);
                         mono2JsCom.Add(JSNameMgr.GetTypeFullName(t, false), jsComponentName);
@@ -642,7 +653,7 @@ using SharpKit.JavaScript;
     public const string JsTypeFormat = @"[assembly: JsType(TargetTypeName = ""{0}"", Mode = JsMode.Clr)]";
 
     public static readonly string JsTypeInfoFile = Application.dataPath +
-                                                   "/JSBinding/Source/JsTypeInfo.cs";
+                                                   "/JSBinding/Source/Editor/JsTypeInfo.cs";
 
     [MenuItem("JSB/Add SharpKit JsType Attribute for all Structs and Classes", false, 51)]
     public static void GenerateJsTypeInfo()

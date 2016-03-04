@@ -3,12 +3,14 @@ using System.Text;
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using SharpKit.JavaScript;
 
 public class JSCache
 {
-	#region MonoBehaviour -> JSComponent Name
-	// MonoBehaviour 对应的 JSComponent 名字
-	static Dictionary<string, string> dictMB2JSComName = new Dictionary<string,string>();
+    #region MonoBehaviour -> JSComponent Name
+    // MonoBehaviour 对应的 JSComponent 名字
+    static Dictionary<string, string> dictMB2JSComName = new Dictionary<string, string>();
+    private static Type monoBehaviourType = typeof(MonoBehaviour);
 
     // 根据 脚本名获得JSComponent名
     public static string GetMonoBehaviourJSComponentName(string monoBehaviourName)
@@ -21,7 +23,7 @@ public class JSCache
     }
     // 从 MonoBehaviour2JSComponentName.javascript 加载
     public static void InitMonoBehaviourJSComponentName()
-	{
+    {
         dictMB2JSComName.Clear();
 
         byte[] jsonBytes = JSEngine.inst.jsLoader.LoadJSSync(JSPathSettings.Mono2JsComConfig);
@@ -69,32 +71,33 @@ public class JSCache
         Debug.Log("JSCache.InitMonoBehaviourJSComponentName OK, total " + dictMB2JSComName.Count);
     }
 
-	#endregion MonoBehaviour -> JSComponent Name
+    #endregion MonoBehaviour -> JSComponent Name
 
-	#region MonoBehaviour Inheritance Relation
-	// 对继承关系做缓存
+    #region MonoBehaviour Inheritance Relation
+    // 对继承关系做缓存
 
-	static Dictionary<string, bool> dictClassInheritanceRel = new Dictionary<string, bool>();
+    static Dictionary<string, bool> dictClassInheritanceRel = new Dictionary<string, bool>();
 
-	public static bool IsInheritanceRel(string baseClassName, string subClassName)
-	{
-		string key = baseClassName + "|" + subClassName;
+    public static bool IsInheritanceRel(string baseClassName, string subClassName)
+    {
+        string key = baseClassName + "|" + subClassName;
 
-		bool ret = false;
-		if (dictClassInheritanceRel.TryGetValue (key, out ret)) {
-			return ret;
-		}
+        bool ret = false;
+        if (dictClassInheritanceRel.TryGetValue(key, out ret))
+        {
+            return ret;
+        }
 
-		ret = false;
-		if (JSMgr.vCall.CallJSFunctionName(0 /*global*/, "jsb_IsInheritanceRel", baseClassName, subClassName))
-		{
-			ret = (System.Boolean)JSApi.getBooleanS((int)JSApi.GetType.JSFunRet);
-		}
-		dictClassInheritanceRel.Add (key, ret);
-		return ret;
-	}
+        ret = false;
+        if (JSMgr.vCall.CallJSFunctionName(0 /*global*/, "jsb_IsInheritanceRel", baseClassName, subClassName))
+        {
+            ret = (System.Boolean)JSApi.getBooleanS((int)JSApi.GetType.JSFunRet);
+        }
+        dictClassInheritanceRel.Add(key, ret);
+        return ret;
+    }
 
-	#endregion MonoBehaviour Inheritance Relation
+    #endregion MonoBehaviour Inheritance Relation
 
     #region Type -> TypeInfo
 
@@ -145,16 +148,22 @@ public class JSCache
                 if (isCSMonoBehaviour == null)
                 {
                     if (type == null)
-                        isCSMonoBehaviour = false;
-                    else if (type.Namespace != null && type.Namespace.IndexOf("UnityEngine") >= 0)
-                        isCSMonoBehaviour = true;
+                        return false;
+
+                    if (!monoBehaviourType.IsAssignableFrom(type))
+                        return false;
+
+                    if (type.Namespace != null && type.Namespace == monoBehaviourType.Namespace)
+                        return true;
+
+                    if (dictMB2JSComName.ContainsKey(JSNameMgr.GetTypeFullName(type, false)))
+                        return false;
+
                     // This is useful if source c# file still exists in project
-                    else if (type.GetCustomAttributes(typeof(SharpKit.JavaScript.JsTypeAttribute), false).Length > 0)
-                        isCSMonoBehaviour = false;
-                    else if (!typeof(MonoBehaviour).IsAssignableFrom(type))
-                        isCSMonoBehaviour = false;
-                    else
-                        isCSMonoBehaviour = true;
+                    if (type.GetCustomAttributes(typeof(JsTypeAttribute), false).Length > 0)
+                        return false;
+
+                    return true;
                 }
                 return (bool)isCSMonoBehaviour;
             }

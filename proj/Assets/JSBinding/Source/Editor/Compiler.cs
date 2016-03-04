@@ -94,7 +94,7 @@ public class Compiler
         foreach (string filePath in sources)
         {
             //Ignore Editor Folder *.cs files
-            if (filePath.Contains("Editor"))
+            if (filePath.Contains("Editor") && !filePath.Contains("JsTypeInfo.cs"))
                 continue;
 
             args.Add("\"" + filePath.Replace(workingDir, ".") + "\"");
