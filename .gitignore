@@ -8,3 +8,6 @@ UnityVS*
 AssetStoreTools*
 obj
 Generated
+proj/Assets/StreamingAssets/JavaScript/GeneratedFiles.*
+proj/Assets/StreamingAssets/JavaScript/SharpKitGeneratedFiles.*
+proj/Assets/JSBinding/Source/CSGenerateRegister.cs
