@@ -148,22 +148,18 @@ public class JSCache
                 if (isCSMonoBehaviour == null)
                 {
                     if (type == null)
-                        return false;
-
-                    if (!monoBehaviourType.IsAssignableFrom(type))
-                        return false;
-
-                    if (type.Namespace != null && type.Namespace == monoBehaviourType.Namespace)
-                        return true;
-
-                    if (dictMB2JSComName.ContainsKey(JSNameMgr.GetTypeFullName(type, false)))
-                        return false;
-
+                        isCSMonoBehaviour = false;
+                    else if (!monoBehaviourType.IsAssignableFrom(type))
+                        isCSMonoBehaviour = false;
+                    else if (type.Namespace != null && type.Namespace == monoBehaviourType.Namespace)
+                        isCSMonoBehaviour = true;
+                    else if (dictMB2JSComName.ContainsKey(JSNameMgr.GetTypeFullName(type, false)))
+                        isCSMonoBehaviour = false;
                     // This is useful if source c# file still exists in project
-                    if (type.GetCustomAttributes(typeof(JsTypeAttribute), false).Length > 0)
-                        return false;
-
-                    return true;
+                    else if (type.GetCustomAttributes(typeof (JsTypeAttribute), false).Length > 0)
+                        isCSMonoBehaviour = false;
+                    else
+                        isCSMonoBehaviour = true;
                 }
                 return (bool)isCSMonoBehaviour;
             }
