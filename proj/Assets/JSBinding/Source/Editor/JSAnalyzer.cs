@@ -722,6 +722,7 @@ using SharpKit.JavaScript;
             "Cancel"))
         {
             Debug.Log("Operation canceled.");
+            return;
         }
 
 #if UNITY_EDITOR_WIN
