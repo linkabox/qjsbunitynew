@@ -6,5 +6,4 @@ Library
 Temp
 UnityVS*
 AssetStoreTools*
-obj/*
-JsTypeGenerator*
+obj
