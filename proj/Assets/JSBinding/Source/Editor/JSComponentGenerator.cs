@@ -79,17 +79,13 @@ public class JSComponentGenerator
 
     static Info[] infos = new Info[]
     {
-        // already in JSComponent
-//      new Info("Awake()"),
-//      new Info("Start()"),
-//      new Info("OnDestroy()"),
-
-        // Performance killer
+        #region 简化版JsCom生成规则
         // 屏蔽生成以下相关事件的JSComponent派生类
         // 包括：UGUI，Server，Animator,Editor相关MonoBehaviour事件
+        // Performance killer
         new Info("Update()", "Update"),
         new Info("LateUpdate()", "Update"),
- 
+
         new Info("FixedUpdate()", "FUpdate"),
         new Info("OnGUI()", "GUI"),
 
@@ -143,7 +139,7 @@ public class JSComponentGenerator
         //new Info("OnMouseOver()", "Mouse"),
         //new Info("OnMouseUp()", "Mouse"),
         //new Info("OnMouseUpAsButton()", "Mouse"),
-
+        
         new Info("OnPostRender()", "Render"),
         new Info("OnPreCull()", "Render"),
         new Info("OnPreRender()", "Render"),
@@ -153,6 +149,75 @@ public class JSComponentGenerator
 
         new Info("OnBecameInvisible()", "Visible"),
         new Info("OnBecameVisible()", "Visible"),
+        #endregion
+
+        #region 完整版JsCom生成规则
+        //// Performance killer
+        //new Info("Update()", "Update"),
+        //new Info("LateUpdate()", "Update"),
+
+        //new Info("FixedUpdate()", "FixedUpdate_OnGUI"),
+        //new Info("OnGUI()", "FixedUpdate_OnGUI"),
+
+        //new Info("OnDisable()", "Enable_Visible"),
+        //new Info("OnEnable()", "Enable_Visible"),
+        //new Info("OnBecameInvisible()", "Enable_Visible"),
+        //new Info("OnBecameVisible()", "Enable_Visible"),
+
+        //new Info("OnTransformChildrenChanged()", "TransChange"),
+        //new Info("OnTransformParentChanged()", "TransChange"),
+
+        //new Info("OnApplicationFocus(bool focusStatus)", "Application"),
+        //new Info("OnApplicationPause(bool pauseStatus)", "Application"),
+        //new Info("OnApplicationQuit()", "Application"),
+        //new Info("OnAudioFilterRead(float[] data, int channels)", "Application"),
+        //new Info("OnLevelWasLoaded(int level)", "Application"),
+
+        //new Info("OnAnimatorIK(int layerIndex)", "AnimatorIK_Move_JointBreak"),
+        //new Info("OnAnimatorMove()", "AnimatorIK_Move_JointBreak"),
+        //new Info("OnJointBreak(float breakForce)", "AnimatorIK_Move_JointBreak"),
+
+        //new Info("OnParticleCollision(GameObject other)", "Physics"),
+        //new Info("OnCollisionEnter(Collision collisionInfo)", "Physics"),
+        //new Info("OnCollisionEnter2D(Collision2D coll)", "Physics"),
+        //new Info("OnCollisionExit(Collision collisionInfo)", "Physics"),
+        //new Info("OnCollisionExit2D(Collision2D coll)", "Physics"),
+        //new Info("OnCollisionStay(Collision collisionInfo)", "Physics"),
+        //new Info("OnCollisionStay2D(Collision2D coll)", "Physics"),
+        //new Info("OnTriggerEnter(Collider other)", "Physics"),
+        //new Info("OnTriggerEnter2D(Collider2D other)", "Physics"),
+        //new Info("OnTriggerExit(Collider other)", "Physics"),
+        //new Info("OnTriggerExit2D(Collider2D other)", "Physics"),
+        //new Info("OnTriggerStay(Collider other)", "Physics"),
+        //new Info("OnTriggerStay2D(Collider2D other)", "Physics"),
+        //new Info("OnControllerColliderHit(ControllerColliderHit hit)", "Physics"),
+
+        //new Info("OnConnectedToServer()", "Server"),
+        //new Info("OnDisconnectedFromServer(NetworkDisconnection info)", "Server"),
+        //new Info("OnFailedToConnect(NetworkConnectionError error)", "Server"),
+        //new Info("OnFailedToConnectToMasterServer(NetworkConnectionError info)", "Server"),
+        //new Info("OnMasterServerEvent(MasterServerEvent msEvent)", "Server"),
+        //new Info("OnNetworkInstantiate(NetworkMessageInfo info)", "Server"),
+        //new Info("OnPlayerConnected(NetworkPlayer player)", "Server"),
+        //new Info("OnPlayerDisconnected(NetworkPlayer player)", "Server"),
+        //new Info("OnSerializeNetworkView(BitStream stream, NetworkMessageInfo info)", "Server"),
+        //new Info("OnServerInitialized()", "Server"),
+
+        //new Info("OnMouseDown()", "Mouse"),
+        //new Info("OnMouseDrag()", "Mouse"),
+        //new Info("OnMouseEnter()", "Mouse"),
+        //new Info("OnMouseExit()", "Mouse"),
+        //new Info("OnMouseOver()", "Mouse"),
+        //new Info("OnMouseUp()", "Mouse"),
+        //new Info("OnMouseUpAsButton()", "Mouse"),
+
+        //new Info("OnPostRender()", "Render"),
+        //new Info("OnPreCull()", "Render"),
+        //new Info("OnPreRender()", "Render"),
+        //new Info("OnRenderImage(RenderTexture src, RenderTexture dest)", "Render"),
+        //new Info("OnRenderObject()", "Render"),
+        //new Info("OnWillRenderObject()", "Render"),
+        #endregion
 
         // Editor only
         //
@@ -162,47 +227,47 @@ public class JSComponentGenerator
         // OnValidate
     };
 
-	// 如果是实现这几个接口的 MonoBehaviour
-	// 统一使用 JSComponent_EventTrigger
-	// 他只能有 Awake Start Update LateUpdate
-	static HashSet<Type> EventListenerInterfaces;
-	static bool IsEventTriggerMonoBehaviour(Type type)
-	{
-		if (EventListenerInterfaces == null)
-		{
-			EventListenerInterfaces = new HashSet<Type> (new Type[] 
-			{
-				typeof(UnityEngine.EventSystems.IEventSystemHandler),
-				typeof(UnityEngine.EventSystems.IPointerEnterHandler),
-				typeof(UnityEngine.EventSystems.IPointerExitHandler),
-				typeof(UnityEngine.EventSystems.IPointerDownHandler),
-				typeof(UnityEngine.EventSystems.IPointerUpHandler),
-				typeof(UnityEngine.EventSystems.IPointerClickHandler),
-				typeof(UnityEngine.EventSystems.IBeginDragHandler),
-				typeof(UnityEngine.EventSystems.IInitializePotentialDragHandler),
-				typeof(UnityEngine.EventSystems.IDragHandler),
-				typeof(UnityEngine.EventSystems.IEndDragHandler),
-				typeof(UnityEngine.EventSystems.IDropHandler),
-				typeof(UnityEngine.EventSystems.IScrollHandler),
-				typeof(UnityEngine.EventSystems.IUpdateSelectedHandler),
-				typeof(UnityEngine.EventSystems.ISelectHandler),
-				typeof(UnityEngine.EventSystems.IDeselectHandler),
-				typeof(UnityEngine.EventSystems.IMoveHandler),
-				typeof(UnityEngine.EventSystems.ISubmitHandler),
-				typeof(UnityEngine.EventSystems.ICancelHandler)
-			});
-		}
+    // 如果是实现这几个接口的 MonoBehaviour
+    // 统一使用 JSComponent_EventTrigger
+    // 他只能有 Awake Start Update LateUpdate
+    static HashSet<Type> EventListenerInterfaces;
+    static bool IsEventTriggerMonoBehaviour(Type type)
+    {
+        if (EventListenerInterfaces == null)
+        {
+            EventListenerInterfaces = new HashSet<Type>(new Type[]
+            {
+                typeof(UnityEngine.EventSystems.IEventSystemHandler),
+                typeof(UnityEngine.EventSystems.IPointerEnterHandler),
+                typeof(UnityEngine.EventSystems.IPointerExitHandler),
+                typeof(UnityEngine.EventSystems.IPointerDownHandler),
+                typeof(UnityEngine.EventSystems.IPointerUpHandler),
+                typeof(UnityEngine.EventSystems.IPointerClickHandler),
+                typeof(UnityEngine.EventSystems.IBeginDragHandler),
+                typeof(UnityEngine.EventSystems.IInitializePotentialDragHandler),
+                typeof(UnityEngine.EventSystems.IDragHandler),
+                typeof(UnityEngine.EventSystems.IEndDragHandler),
+                typeof(UnityEngine.EventSystems.IDropHandler),
+                typeof(UnityEngine.EventSystems.IScrollHandler),
+                typeof(UnityEngine.EventSystems.IUpdateSelectedHandler),
+                typeof(UnityEngine.EventSystems.ISelectHandler),
+                typeof(UnityEngine.EventSystems.IDeselectHandler),
+                typeof(UnityEngine.EventSystems.IMoveHandler),
+                typeof(UnityEngine.EventSystems.ISubmitHandler),
+                typeof(UnityEngine.EventSystems.ICancelHandler)
+            });
+        }
 
-		Type[] interfaces = type.GetInterfaces ();
-		foreach (var interf in interfaces)
-		{
-			if (EventListenerInterfaces.Contains(interf))
-			{
-				return true;
-			}
-		}
-		return false;
-	}
+        Type[] interfaces = type.GetInterfaces();
+        foreach (var interf in interfaces)
+        {
+            if (EventListenerInterfaces.Contains(interf))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
 
     /// <summary>
     /// 根据一个 MonoBehaviour
@@ -212,11 +277,12 @@ public class JSComponentGenerator
     /// <returns></returns>
     public static string GetJSComponentClassName(Type type)
     {
-		if (IsEventTriggerMonoBehaviour (type)) {
-			return typeof(JSComponent_EventTrigger).Name;
-		}
+        if (IsEventTriggerMonoBehaviour(type))
+        {
+            return typeof(JSComponent_EventTrigger).Name;
+        }
 
-        MethodInfo[] methods = type.GetMethods(BindingFlags.Public 
+        MethodInfo[] methods = type.GetMethods(BindingFlags.Public
                         | BindingFlags.NonPublic
                         | BindingFlags.Instance
                         // | BindingFlags.Static
@@ -340,7 +406,8 @@ public class JSComponent{0} : JSComponent
             return;
         }
         string dir = Application.dataPath + "/JSBinding/Source/JSComponent/Generated";
-        Directory.Delete(dir,true);
+        if(Directory.Exists(dir))
+            Directory.Delete(dir, true);
         Directory.CreateDirectory(dir);
 
         for (var i = 0; i < groupCount; i++)
@@ -370,7 +437,7 @@ public class JSComponent{0} : JSComponent
                 }
                 sbFile.AppendFormat(fileFormat, suffix, sbVariableDeclaration, sbVariableInit, sbFunctions);
 
-                string fileName = string.Format("{0}/{1}.cs",dir,"JSComponent" + suffix);
+                string fileName = string.Format("{0}/{1}.cs", dir, "JSComponent" + suffix);
                 var w = new StreamWriter(fileName, false/* append */, Encoding.UTF8);
                 w.Write(sbFile.ToString());
                 w.Close();
