@@ -789,6 +789,15 @@ using SharpKit.JavaScript;
     [MenuItem("JSB/Delete SharpKit JsType Attribute for all Structs and Classes", false, 52)]
     public static void RemoveJsTypeAttribute()
     {
+		if (!EditorUtility.DisplayDialog("TIP",
+			"Will clean up JsTypeInfo.cs file",
+			"OK",
+			"Cancel"))
+		{
+			Debug.Log("Operation canceled.");
+			return;
+		}
+
         File.WriteAllText(JsTypeInfoFile, string.Format(JsTypeInfoFileTemplate, ""));
         EditorUtility.DisplayDialog("Tip", "RemoveJsTypeAttribute Success!", "OK");
         AssetDatabase.Refresh();
