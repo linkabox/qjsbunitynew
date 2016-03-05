@@ -10,4 +10,4 @@ obj
 proj/Assets/JSBinding/Generated
 proj/Assets/StreamingAssets/JavaScript/GeneratedFiles.*
 proj/Assets/StreamingAssets/JavaScript/SharpKitGeneratedFiles.*
-proj/Assets/JSBinding/Source/CSGenerateRegister.cs
+proj/Assets/JSBinding/Source/CSGenerateRegister.*

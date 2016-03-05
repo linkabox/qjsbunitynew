@@ -439,13 +439,8 @@ public static class JSSerializerEditor
         if (typeAttrs.Length > 0)
             return true;
 
-        var assemblyAttrs = typeof(JSAnalyzer).Assembly.GetCustomAttributes(typeof(JsTypeAttribute), false);
-        foreach (var attr in assemblyAttrs)
-        {
-            JsTypeAttribute jsAttr = attr as JsTypeAttribute;
-            if (jsAttr.TargetTypeName == type.FullName)
-                return true;
-        }
+		if (JSAnalyzer.JsTypeNameSet.Contains (type.FullName))
+			return true;
 
         return false;
     }

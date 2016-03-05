@@ -8,6 +8,7 @@ using cg;
 using UnityEditor;
 using UnityEngine;
 using Debug = UnityEngine.Debug;
+using SharpKit.JavaScript;
 
 public static class JSAnalyzer
 {
@@ -615,14 +616,13 @@ public static class JSAnalyzer
             var types = logicCodeLib.GetTypes();
             foreach (var t in types)
             {
-                if (JSSerializerEditor.WillTypeBeTranslatedToJavaScript(t))
-                {
-                    if (t.IsSubclassOf(typeof (MonoBehaviour)))
-                    {
-                        string jsComponentName = JSComponentGenerator.GetJSComponentClassName(t);
-                        mono2JsCom.Add(JSNameMgr.GetTypeFullName(t, false), jsComponentName);
-                    }
-                }
+				if (t.IsSubclassOf (typeof(MonoBehaviour))) {
+					if (JSSerializerEditor.WillTypeBeTranslatedToJavaScript (t)) {
+                    
+						string jsComponentName = JSComponentGenerator.GetJSComponentClassName (t);
+						mono2JsCom.Add (JSNameMgr.GetTypeFullName (t, false), jsComponentName);
+					}
+				}
             }
         }
 
@@ -635,6 +635,27 @@ public static class JSAnalyzer
     #endregion
 
     #region 添加JsType属性标记
+
+	private static HashSet<string> _jsTypeNameSet = null;
+	/// <summary>
+	/// 缓存记录JsTypeInfo生成的类型名集合
+	/// </summary>
+	/// <value>The js type name set.</value>
+	public static HashSet<string> JsTypeNameSet
+	{
+		get{
+			if (_jsTypeNameSet == null) {
+				_jsTypeNameSet = new HashSet<string> ();
+				var assemblyAttrs = typeof(JSAnalyzer).Assembly.GetCustomAttributes(typeof(JsTypeAttribute), false);
+				foreach (var attr in assemblyAttrs)
+				{
+					JsTypeAttribute jsAttr = attr as JsTypeAttribute;
+					_jsTypeNameSet.Add (jsAttr.TargetTypeName);
+				}
+			}
+			return _jsTypeNameSet;
+		}
+	}
 
     public const string JsTypeInfoFileTemplate = @"
 //------------------------------------------------------------------------------
@@ -759,6 +780,8 @@ using SharpKit.JavaScript;
             return;
         }
 
+		//每次生成JsTypeInfo，清空一下JsTypeNameSet
+		_jsTypeNameSet = null;
         EditorUtility.DisplayDialog("JsTypeGenerator", "GenerateJsTypeInfo success.", "OK");
         AssetDatabase.Refresh();
     }
