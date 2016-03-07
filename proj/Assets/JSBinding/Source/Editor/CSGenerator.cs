@@ -1,23 +1,53 @@
-﻿using UnityEngine;
-using UnityEditor;
-using System;
-using System.Text;
-using System.Reflection;
+﻿using System;
 using System.Collections.Generic;
-using System.Collections;
 using System.IO;
-using System.Text.RegularExpressions;
-using UnityEngine.SocialPlatforms;
-using System.Runtime.InteropServices;
+using System.Reflection;
+using System.Text;
+using cg;
+using UnityEditor;
+using UnityEngine;
+using Object = UnityEngine.Object;
 
 public static class CSGenerator
 {
-    // input
-    static StringBuilder sb = null;
-    public static Type cachedType = null;
-    public static string thisClassName = null;
+    // used for record information
+    public class ClassCallbackNames
+    {
+        public List<string> constructors;
 
-    static string tempFile = JSPathSettings.jsDir + "/temp" + JSPathSettings.jsExtension;
+        // genetated, generating CSParam code
+        public List<string> constructorsCSParam;
+        public List<string> fields;
+        public List<string> methods;
+        public List<string> methodsCSParam;
+
+        public HashSet<string> nameSpaces;
+        public List<string> properties;
+        // class type
+        public Type type;
+    }
+
+    private const string REGISTER_HEADER = @"using UnityEngine;
+public class CSGenerateRegister
+[[
+    public static void RegisterAll()
+    [[
+        if (JSMgr.allCallbackInfo.Count != 0)
+        [[
+            Debug.LogError(""Has already register CS binding"");
+        ]]
+{0}
+    ]]
+]]
+";
+    // input
+    private static StringBuilder sb;
+    public static Type cachedType;
+    public static string thisClassName;
+
+    private static readonly string registerFile = Application.dataPath + "/JSBinding/Source/CSGenerateRegister.cs";
+
+    public static List<Type> exportTypeList;
 
     public static void OnBegin()
     {
@@ -25,7 +55,7 @@ public static class CSGenerator
 
         if (Directory.Exists(JSPathSettings.csGeneratedDir))
         {
-            string[] files = Directory.GetFiles(JSPathSettings.csGeneratedDir);
+            var files = Directory.GetFiles(JSPathSettings.csGeneratedDir);
             for (int i = 0; i < files.Length; i++)
             {
                 File.Delete(files[i]);
@@ -36,10 +66,11 @@ public static class CSGenerator
             Directory.CreateDirectory(JSPathSettings.csGeneratedDir);
         }
     }
+
     public static void OnEnd()
     {
-
     }
+
     public static string SharpKitTypeName(Type type)
     {
         string name = string.Empty;
@@ -51,7 +82,7 @@ public static class CSGenerator
         {
             while (type.IsArray)
             {
-                Type subt = type.GetElementType();
+                var subt = type.GetElementType();
                 name += SharpKitTypeName(subt) + '$';
                 type = subt;
             }
@@ -60,32 +91,32 @@ public static class CSGenerator
         else if (type.IsGenericType)
         {
             name = type.Name;
-            Type[] ts = type.GetGenericArguments();
+            var ts = type.GetGenericArguments();
             for (int i = 0; i < ts.Length; i++)
             {
                 name += "$" + SharpKitTypeName(ts[i]);
             }
         }
         else
-		{
-			if (type == typeof(UnityEngine.Object))
-				name = "UE" + type.Name;
-			else
-            	name = type.Name;
+        {
+            if (type == typeof (Object))
+                name = "UE" + type.Name;
+            else
+                name = type.Name;
         }
         return name;
-
     }
+
     public static string SharpKitMethodName(string methodName, ParameterInfo[] paramS, bool overloaded, int TCounts = 0)
     {
         string name = methodName;
         if (overloaded)
         {
             if (TCounts > 0)
-                name += "T" + TCounts.ToString();
+                name += "T" + TCounts;
             for (int i = 0; i < paramS.Length; i++)
             {
-                Type type = paramS[i].ParameterType;
+                var type = paramS[i].ParameterType;
                 name += "$$" + SharpKitTypeName(type);
             }
             name = name.Replace("`", "T");
@@ -93,6 +124,7 @@ public static class CSGenerator
         name = name.Replace("$", "_");
         return name;
     }
+
     public static StringBuilder BuildFields(Type type, FieldInfo[] fields, int[] fieldsIndex, ClassCallbackNames ccbn)
     {
         var sb = new StringBuilder();
@@ -100,9 +132,10 @@ public static class CSGenerator
         {
             //var sbCall = new StringBuilder();
 
-            FieldInfo field = fields[i];
+            var field = fields[i];
             if (field.DeclaringType != null) ccbn.nameSpaces.Add(field.DeclaringType.Namespace);
-            bool isDelegate = JSDataExchangeEditor.IsDelegateDerived(field.FieldType);// (typeof(System.Delegate).IsAssignableFrom(field.FieldType));
+            bool isDelegate = JSDataExchangeEditor.IsDelegateDerived(field.FieldType);
+            // (typeof(System.Delegate).IsAssignableFrom(field.FieldType));
             if (isDelegate)
             {
                 sb.Append(JSDataExchangeEditor.Build_DelegateFunction(type, field, field.FieldType, i, 0));
@@ -122,7 +155,8 @@ public static class CSGenerator
             {
                 sbt = new StringBuilder();
 
-                sbt.AppendFormat("    FieldInfo member = GenericTypeCache.getField(vc.csObj.GetType(), fieldID{0}); \n", i);
+                sbt.AppendFormat(
+                    "    FieldInfo member = GenericTypeCache.getField(vc.csObj.GetType(), fieldID{0}); \n", i);
                 sbt.AppendFormat("    if (member == null) return;\n");
                 sbt.Append("\n");
             }
@@ -135,7 +169,7 @@ public static class CSGenerator
                 sb.Append(sbt);
             }
 
-            bool bReadOnly = (field.IsInitOnly || field.IsLiteral);
+            bool bReadOnly = field.IsInitOnly || field.IsLiteral;
             if (!bReadOnly)
             {
                 sb.Append("    if (vc.bGet) [[\n");
@@ -144,7 +178,7 @@ public static class CSGenerator
             // Debug.Log("FIELD " + type.Name + "." + field.Name);
 
             sb.Append(JSDataExchangeEditor.BuildCallString(type, field, "" /* argList */,
-                                features | JSDataExchangeEditor.MemberFeature.Get));
+                features | JSDataExchangeEditor.MemberFeature.Get));
 
             sb.AppendFormat("        {0}\n", JSDataExchangeEditor.Get_Return(field.FieldType, "result"));
 
@@ -159,18 +193,19 @@ public static class CSGenerator
                     sb.Append("        " + paramHandler.getter + "\n");
 
                     sb.Append(JSDataExchangeEditor.BuildCallString(type, field, "" /* argList */,
-                                features | JSDataExchangeEditor.MemberFeature.Set, paramHandler.argName));
+                        features | JSDataExchangeEditor.MemberFeature.Set, paramHandler.argName));
                 }
                 else
                 {
-                    var getDelegateFuncitonName = JSDataExchangeEditor.GetMethodArg_DelegateFuncionName(type, field.Name, i, 0);
+                    string getDelegateFuncitonName = JSDataExchangeEditor.GetMethodArg_DelegateFuncionName(type,
+                        field.Name, i, 0);
 
 //                     sb.Append(JSDataExchangeEditor.BuildCallString(type, field, "" /* argList */,
 //                                 features | JSDataExchangeEditor.MemberFeature.Set, getDelegateFuncitonName + "(vc.getJSFunctionValue())"));
 
                     string getDelegate = JSDataExchangeEditor.Build_GetDelegate(getDelegateFuncitonName, field.FieldType);
                     sb.Append(JSDataExchangeEditor.BuildCallString(type, field, "" /* argList */,
-                                features | JSDataExchangeEditor.MemberFeature.Set, getDelegate));
+                        features | JSDataExchangeEditor.MemberFeature.Set, getDelegate));
                 }
                 sb.Append("    ]]\n");
             }
@@ -181,188 +216,19 @@ public static class CSGenerator
 
         return sb;
     }
-    public static StringBuilder BuildPropertiesTypeT(Type type, PropertyInfo[] properties, int[] propertiesIndex, ClassCallbackNames ccbn)
+
+
+    public static StringBuilder BuildProperties(Type type, PropertyInfo[] properties, int[] propertiesIndex,
+        ClassCallbackNames ccbn)
     {
-        StringBuilder sb = new StringBuilder();
+        var sb = new StringBuilder();
         for (int i = 0; i < properties.Length; i++)
         {
             var sbCall = new StringBuilder();
 
-            PropertyInfo property = properties[i];
-
-            bool bT = type.IsGenericTypeDefinition;
-            StringBuilder sbt = null;
-            if (bT)
-            {
-                sbt = new StringBuilder();
-
-                sbt.AppendFormat("    PropertyInfo property = JSDataExchangeMgr.GetPropertyInfoOfGenericClass(vc.csObj.GetType(), {0}); \n",
-                        propertiesIndex[i]);        // [0] methodArrIndex
-
-                sbt.AppendFormat("    if (property == null)\n        return true;\n");
-                sbt.Append("\n");
-
-                sb.Append(sbt);
-            }
-
-            //
-            // check to see if this is a indexer
-            //
-            ParameterInfo[] ps = property.GetIndexParameters();
-            bool bIndexer = (ps.Length > 0);
-            StringBuilder sbActualParam = null;
-            JSDataExchangeEditor.ParamHandler[] paramHandlers = null;
-            if (bIndexer)
-            {
-                sbActualParam = new StringBuilder();
-                paramHandlers = new JSDataExchangeEditor.ParamHandler[ps.Length];
-                sbActualParam.Append("[");
-                for (int j = 0; j < ps.Length; j++)
-                {
-                    paramHandlers[j] = JSDataExchangeEditor.Get_ParamHandler(ps[j].ParameterType, j, false, false);
-                    sbActualParam.AppendFormat("{0}", paramHandlers[j].argName);
-                    if (j != ps.Length - 1)
-                        sbActualParam.Append(", ");
-                }
-                sbActualParam.Append("]");
-            }
-
-            string functionName = type.Name + "_" + property.Name;
-            if (bIndexer)
-            {
-                foreach (var p in ps)
-                {
-                    functionName += "_" + p.ParameterType.Name;
-                }
-            }
-            functionName = JSNameMgr.HandleFunctionName(functionName);
-
-            sb.AppendFormat("static void {0}(JSVCall vc)\n[[\n", functionName);
-
-            MethodInfo[] accessors = property.GetAccessors();
-            bool isStatic = accessors[0].IsStatic;
-
-            bool bReadOnly = !property.CanWrite;
-            if (bIndexer)
-            {
-                for (int j = 0; j < ps.Length; j++)
-                {
-                    sb.Append("        " + paramHandlers[j].getter + "\n");
-                }
-                if (bT)
-                {
-                    if (isStatic)
-                    {
-                        sbCall.AppendFormat("{0}{1}", JSNameMgr.GetTypeFullName(type), sbActualParam);
-                    }
-                    else
-                    {
-                        sbCall.AppendFormat("(({0})vc.csObj){1}", JSNameMgr.GetTypeFullName(type), sbActualParam);
-                    }
-                }
-                else
-                {
-                    if (isStatic)
-                    {
-                        sbCall.AppendFormat("{0}{1}", JSNameMgr.GetTypeFullName(type), sbActualParam);
-                    }
-                    else
-                    {
-                        sbCall.AppendFormat("(({0})vc.csObj){1}", JSNameMgr.GetTypeFullName(type), sbActualParam);
-                    }
-                }
-            }
-
-            if (!bReadOnly)
-            {
-                sb.Append("    if (vc.bGet) [[ \n");
-            }
-
-            if (!bIndexer)
-            {
-                // get
-                if (isStatic)
-                    sbCall.AppendFormat("{0}.{1}", JSNameMgr.GetTypeFullName(type), property.Name);
-                else
-                    sbCall.AppendFormat("(({0})vc.csObj).{1}", JSNameMgr.GetTypeFullName(type), property.Name);
-            }
-
-            //if (type.IsValueType && !field.IsStatic)
-            //    sb.AppendFormat("{0} argThis = ({0})vc.csObj;", type.Name);
-
-            sb.AppendFormat("        {0}", JSDataExchangeEditor.Get_Return(property.PropertyType, sbCall.ToString()));
-            if (!bReadOnly)
-            {
-                sb.Append("\n    ]]\n");
-            }
-
-            // set
-            if (!bReadOnly)
-            {
-                sb.Append("    else [[\n");
-
-                int ParamIndex = ps.Length;
-
-                var paramHandler = JSDataExchangeEditor.Get_ParamHandler(property.PropertyType, ParamIndex, false, false);
-                sb.Append("        " + paramHandler.getter + "\n");
-
-                if (bIndexer)
-                {
-                    if (isStatic)
-                        sb.AppendFormat("{0} = {1};\n", sbCall, paramHandler.argName);
-                    else
-                    {
-                        if (type.IsValueType)
-                        {
-                            sb.AppendFormat("        {0} argThis = ({0})vc.csObj;\n", JSNameMgr.GetTypeFullName(type));
-                            sb.AppendFormat("argThis{0} = {1};", sbActualParam, paramHandler.argName);
-                            sb.Append("        JSMgr.changeJSObj(vc.jsObjID, argThis);\n");
-                        }
-                        else
-                        {
-                            sb.AppendFormat("        {0} = {1};\n", sbCall, paramHandler.argName);
-                        }
-                    }
-                }
-                else
-                {
-                    if (isStatic)
-                        sb.AppendFormat("{0}.{1} = {2};\n", JSNameMgr.GetTypeFullName(type), property.Name, paramHandler.argName);
-                    else
-                    {
-                        if (type.IsValueType)
-                        {
-                            sb.AppendFormat("        {0} argThis = ({0})vc.csObj;\n", JSNameMgr.GetTypeFullName(type));
-                            sb.AppendFormat("        argThis.{0} = {1};\n", property.Name, paramHandler.argName);
-                            sb.Append("        JSMgr.changeJSObj(vc.jsObjID, argThis);\n");
-                        }
-                        else
-                        {
-                            sb.AppendFormat("        (({0})vc.csObj).{1} = {2};\n", JSNameMgr.GetTypeFullName(type), property.Name, paramHandler.argName);
-                        }
-                    }
-                }
-                sb.Append("    ]]\n");
-            }
-
-            sb.AppendFormat("]]\n");
-
-            ccbn.properties.Add(functionName);
-        }
-        return sb;
-    }
-    
-
-    public static StringBuilder BuildProperties(Type type, PropertyInfo[] properties, int[] propertiesIndex, ClassCallbackNames ccbn)
-    {
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < properties.Length; i++)
-        {
-            var sbCall = new StringBuilder();
-
-            PropertyInfo property = properties[i];
+            var property = properties[i];
             if (property.DeclaringType != null) ccbn.nameSpaces.Add(property.DeclaringType.Namespace);
-            MethodInfo[] accessors = property.GetAccessors();
+            var accessors = property.GetAccessors();
             bool isStatic = accessors[0].IsStatic;
             JSDataExchangeEditor.MemberFeature features = 0;
             if (isStatic) features |= JSDataExchangeEditor.MemberFeature.Static;
@@ -370,7 +236,8 @@ public static class CSGenerator
             bool bGenericT = type.IsGenericTypeDefinition;
             StringBuilder sbt = null;
 
-            bool isDelegate = JSDataExchangeEditor.IsDelegateDerived(property.PropertyType); ;// (typeof(System.Delegate).IsAssignableFrom(property.PropertyType));
+            bool isDelegate = JSDataExchangeEditor.IsDelegateDerived(property.PropertyType);
+            ; // (typeof(System.Delegate).IsAssignableFrom(property.PropertyType));
             if (isDelegate)
             {
                 sb.Append(JSDataExchangeEditor.Build_DelegateFunction(type, property, property.PropertyType, i, 0));
@@ -379,7 +246,7 @@ public static class CSGenerator
             // PropertyID
             if (bGenericT)
             {
-                cg.args arg = new cg.args();
+                var arg = new args();
                 arg.AddFormat("\"{0}\"", property.Name);
 
                 arg.AddFormat("\"{0}\"", property.PropertyType.Name);
@@ -392,32 +259,33 @@ public static class CSGenerator
                     arg.Add("TypeFlag.None");
                 }
 
-                cg.args arg1 = new cg.args();
-                cg.args arg2 = new cg.args();
+                var arg1 = new args();
+                var arg2 = new args();
 
-                foreach (ParameterInfo p in property.GetIndexParameters())
+                foreach (var p in property.GetIndexParameters())
                 {
-                    cg.args argFlag = ParameterInfo2TypeFlag(p);
+                    var argFlag = ParameterInfo2TypeFlag(p);
 
-                    arg1.AddFormat("\"{0}\"", p.ParameterType.Name);                    
-                    arg2.Add(argFlag.Format(cg.args.ArgsFormat.Flag));
+                    arg1.AddFormat("\"{0}\"", p.ParameterType.Name);
+                    arg2.Add(argFlag.Format(args.ArgsFormat.Flag));
                 }
 
                 if (arg1.Count > 0)
-                    arg.AddFormat("new string[]{0}", arg1.Format(cg.args.ArgsFormat.Brace));
+                    arg.AddFormat("new string[]{0}", arg1.Format(args.ArgsFormat.Brace));
                 else
                     arg.Add("null");
                 if (arg2.Count > 0)
-                    arg.AddFormat("new TypeFlag[]{0}", arg2.Format(cg.args.ArgsFormat.Brace));
+                    arg.AddFormat("new TypeFlag[]{0}", arg2.Format(args.ArgsFormat.Brace));
                 else
                     arg.Add("null");
-                sb.AppendFormat("public static PropertyID propertyID{0} = new PropertyID({1});\n", i, arg.ToString());
+                sb.AppendFormat("public static PropertyID propertyID{0} = new PropertyID({1});\n", i, arg);
             }
 
             if (bGenericT)
             {
                 sbt = new StringBuilder();
-                sbt.AppendFormat("    PropertyInfo member = GenericTypeCache.getProperty(vc.csObj.GetType(), propertyID{0}); \n", i);
+                sbt.AppendFormat(
+                    "    PropertyInfo member = GenericTypeCache.getProperty(vc.csObj.GetType(), propertyID{0}); \n", i);
                 sbt.AppendFormat("    if (member == null) return;\n");
                 sbt.Append("\n");
             }
@@ -425,11 +293,11 @@ public static class CSGenerator
             //
             // check to see if this is a indexer
             //
-            ParameterInfo[] ps = property.GetIndexParameters();
-            bool bIndexer = (ps.Length > 0);
+            var ps = property.GetIndexParameters();
+            bool bIndexer = ps.Length > 0;
             if (bIndexer) features |= JSDataExchangeEditor.MemberFeature.Indexer;
-            cg.args argActual = new cg.args();
-            JSDataExchangeEditor.ParamHandler[] paramHandlers = new JSDataExchangeEditor.ParamHandler[ps.Length];
+            var argActual = new args();
+            var paramHandlers = new JSDataExchangeEditor.ParamHandler[ps.Length];
             for (int j = 0; j < ps.Length; j++)
             {
                 paramHandlers[j] = JSDataExchangeEditor.Get_ParamHandler(ps[j].ParameterType, j, false, false);
@@ -457,9 +325,10 @@ public static class CSGenerator
                 sb.Append("        " + paramHandlers[j].getter + "\n");
             }
 
-            bool bReadOnly = (!property.CanWrite || property.GetSetMethod() == null);
-            sbCall.Append(JSDataExchangeEditor.BuildCallString(type, property, argActual.Format(cg.args.ArgsFormat.OnlyList), 
-                                features | JSDataExchangeEditor.MemberFeature.Get));
+            bool bReadOnly = !property.CanWrite || property.GetSetMethod() == null;
+            sbCall.Append(JSDataExchangeEditor.BuildCallString(type, property,
+                argActual.Format(args.ArgsFormat.OnlyList),
+                features | JSDataExchangeEditor.MemberFeature.Get));
 
             if (!bReadOnly)
             {
@@ -497,22 +366,26 @@ public static class CSGenerator
                 {
                     int ParamIndex = ps.Length;
 
-                    var paramHandler = JSDataExchangeEditor.Get_ParamHandler(property.PropertyType, ParamIndex, false, false);
+                    var paramHandler = JSDataExchangeEditor.Get_ParamHandler(property.PropertyType, ParamIndex, false,
+                        false);
                     sb.Append("        " + paramHandler.getter + "\n");
 
-                    sb.Append(JSDataExchangeEditor.BuildCallString(type, property, argActual.Format(cg.args.ArgsFormat.OnlyList),
-                                    features | JSDataExchangeEditor.MemberFeature.Set, paramHandler.argName));
+                    sb.Append(JSDataExchangeEditor.BuildCallString(type, property,
+                        argActual.Format(args.ArgsFormat.OnlyList),
+                        features | JSDataExchangeEditor.MemberFeature.Set, paramHandler.argName));
                 }
                 else
                 {
-                    var getDelegateFuncitonName = JSDataExchangeEditor.GetMethodArg_DelegateFuncionName(type, property.Name, i, 0);
+                    string getDelegateFuncitonName = JSDataExchangeEditor.GetMethodArg_DelegateFuncionName(type,
+                        property.Name, i, 0);
 
                     //                     sb.Append(JSDataExchangeEditor.BuildCallString(type, field, "" /* argList */,
                     //                                 features | JSDataExchangeEditor.MemberFeature.Set, getDelegateFuncitonName + "(vc.getJSFunctionValue())"));
 
-                    string getDelegate = JSDataExchangeEditor.Build_GetDelegate(getDelegateFuncitonName, property.PropertyType);
+                    string getDelegate = JSDataExchangeEditor.Build_GetDelegate(getDelegateFuncitonName,
+                        property.PropertyType);
                     sb.Append(JSDataExchangeEditor.BuildCallString(type, property, "" /* argList */,
-                                features | JSDataExchangeEditor.MemberFeature.Set, getDelegate));
+                        features | JSDataExchangeEditor.MemberFeature.Set, getDelegate));
                 }
                 sb.Append("    ]]\n");
             }
@@ -523,26 +396,30 @@ public static class CSGenerator
         }
         return sb;
     }
-    
-    static StringBuilder GenListCSParam2(ParameterInfo[] ps)
+
+    private static StringBuilder GenListCSParam2(ParameterInfo[] ps)
     {
-        StringBuilder sb = new StringBuilder();
+        var sb = new StringBuilder();
 
         string fmt = "new JSVCall.CSParam({0}, {1}, {2}, {3}{4}, {5}), ";
         for (int i = 0; i < ps.Length; i++)
         {
-            ParameterInfo p = ps[i];
-            Type t = p.ParameterType;
-            sb.AppendFormat(fmt, t.IsByRef ? "true" : "false", p.IsOptional ? "true" : "false", t.IsArray ? "true" : "false", "typeof(" + JSNameMgr.GetTypeFullName(t) + ")", t.IsByRef ? ".MakeByRefType()" : "", "null");
+            var p = ps[i];
+            var t = p.ParameterType;
+            sb.AppendFormat(fmt, t.IsByRef ? "true" : "false", p.IsOptional ? "true" : "false",
+                t.IsArray ? "true" : "false", "typeof(" + JSNameMgr.GetTypeFullName(t) + ")",
+                t.IsByRef ? ".MakeByRefType()" : "", "null");
         }
         fmt = "new JSVCall.CSParam[][[{0}]]";
-        StringBuilder sbX = new StringBuilder();
+        var sbX = new StringBuilder();
         sbX.AppendFormat(fmt, sb);
         return sbX;
     }
-    public static StringBuilder BuildSpecialFunctionCall(ParameterInfo[] ps, string className, string methodName, bool bStatic, bool returnVoid, Type returnType)
+
+    public static StringBuilder BuildSpecialFunctionCall(ParameterInfo[] ps, string className, string methodName,
+        bool bStatic, bool returnVoid, Type returnType)
     {
-        StringBuilder sb = new StringBuilder();
+        var sb = new StringBuilder();
         var paramHandlers = new JSDataExchangeEditor.ParamHandler[ps.Length];
         for (int i = 0; i < ps.Length; i++)
         {
@@ -586,16 +463,17 @@ public static class CSGenerator
         sb.Append("    " + ret);
         return sb;
     }
+
     public static StringBuilder BuildNormalFunctionCall(
-        int methodTag, 
+        int methodTag,
         ParameterInfo[] ps,
-        string methodName, 
-        bool bStatic, 
-        Type returnType, 
+        string methodName,
+        bool bStatic,
+        Type returnType,
         bool bConstructor,
         int TCount = 0)
     {
-        StringBuilder sb = new StringBuilder();
+        var sb = new StringBuilder();
 
         if (bConstructor)
         {
@@ -609,10 +487,11 @@ public static class CSGenerator
             if (cachedType.IsGenericTypeDefinition)
             {
                 // Not generic method, but is generic type
-                StringBuilder sbt = new StringBuilder();
+                var sbt = new StringBuilder();
 
-                sbt.AppendFormat("    ConstructorInfo constructor = JSDataExchangeMgr.makeGenericConstructor(typeof({0}), constructorID{1}); \n",
-                        JSNameMgr.GetTypeFullName(cachedType), methodTag);
+                sbt.AppendFormat(
+                    "    ConstructorInfo constructor = JSDataExchangeMgr.makeGenericConstructor(typeof({0}), constructorID{1}); \n",
+                    JSNameMgr.GetTypeFullName(cachedType), methodTag);
 
                 //sbMethodHitTest.AppendFormat("GenericTypeCache.getConstructor(typeof({0}), {2}.constructorID{1});\n", JSNameMgr.GetTypeFullName(type), methodTag, JSNameMgr.GetTypeFileName(type));
 
@@ -622,21 +501,23 @@ public static class CSGenerator
                 sb.Append(sbt);
             }
         }
-        
+
         else if (TCount > 0)
         {
-            StringBuilder sbt = new StringBuilder();
+            var sbt = new StringBuilder();
             sbt.Append("    // Get generic method by name and param count.\n");
 
             if (!bStatic) // instance method
             {
-                sbt.AppendFormat("    MethodInfo method = JSDataExchangeMgr.makeGenericMethod(vc.csObj.GetType(), methodID{0}, {1}); \n",
+                sbt.AppendFormat(
+                    "    MethodInfo method = JSDataExchangeMgr.makeGenericMethod(vc.csObj.GetType(), methodID{0}, {1}); \n",
                     methodTag,
                     TCount);
             }
             else // static method
             {
-                sbt.AppendFormat("    MethodInfo method = JSDataExchangeMgr.makeGenericMethod(typeof({0}), methodID{1}, {2}); \n",
+                sbt.AppendFormat(
+                    "    MethodInfo method = JSDataExchangeMgr.makeGenericMethod(typeof({0}), methodID{1}, {2}); \n",
                     JSNameMgr.GetTypeFullName(cachedType),
                     methodTag,
                     TCount);
@@ -649,12 +530,13 @@ public static class CSGenerator
         else if (cachedType.IsGenericTypeDefinition)
         {
             // not generic method, but is generic type
-            StringBuilder sbt = new StringBuilder();
+            var sbt = new StringBuilder();
             sbt.Append("    // Get generic method by name and param count.\n");
 
             if (!bStatic) // instance method
             {
-                sbt.AppendFormat("    MethodInfo method = GenericTypeCache.getMethod(vc.csObj.GetType(), methodID{0}); \n", methodTag);
+                sbt.AppendFormat(
+                    "    MethodInfo method = GenericTypeCache.getMethod(vc.csObj.GetType(), methodID{0}); \n", methodTag);
             }
             else // static method
             {
@@ -675,10 +557,10 @@ public static class CSGenerator
             /////////////////////
         }
 
-        var paramHandlers = new JSDataExchangeEditor.ParamHandler[ps.Length];        
+        var paramHandlers = new JSDataExchangeEditor.ParamHandler[ps.Length];
         for (int i = 0; i < ps.Length; i++)
         {
-            if (true /* !ps[i].ParameterType.IsGenericParameter */ )
+            if (true /* !ps[i].ParameterType.IsGenericParameter */)
             {
                 // use original method's parameterinfo
                 if (!JSDataExchangeEditor.IsDelegateDerived(ps[i].ParameterType))
@@ -694,11 +576,14 @@ public static class CSGenerator
         int minNeedParams = 0;
         for (int i = 0; i < ps.Length; i++)
         {
-            if (ps[i].IsOptional) { break; }
+            if (ps[i].IsOptional)
+            {
+                break;
+            }
             minNeedParams++;
         }
 
-        
+
         if (bConstructor && cachedType.IsGenericTypeDefinition)
             sb.AppendFormat("    int len = argc - {0};\n", cachedType.GetGenericArguments().Length);
         else if (TCount == 0)
@@ -708,19 +593,20 @@ public static class CSGenerator
 
         for (int j = minNeedParams; j <= ps.Length; j++)
         {
-            StringBuilder sbGetParam = new StringBuilder();
-            StringBuilder sbActualParam = new StringBuilder();
-            StringBuilder sbUpdateRefParam = new StringBuilder();
+            var sbGetParam = new StringBuilder();
+            var sbActualParam = new StringBuilder();
+            var sbUpdateRefParam = new StringBuilder();
 
             // receive arguments first
             for (int i = 0; i < j; i++)
             {
-                ParameterInfo p = ps[i];
+                var p = ps[i];
                 //if (typeof(System.Delegate).IsAssignableFrom(p.ParameterType))
                 if (JSDataExchangeEditor.IsDelegateDerived(p.ParameterType))
                 {
                     //string delegateGetName = JSDataExchangeEditor.GetFunctionArg_DelegateFuncionName(className, methodName, methodIndex, i);
-                    string delegateGetName = JSDataExchangeEditor.GetMethodArg_DelegateFuncionName(cachedType, methodName, methodTag, i);
+                    string delegateGetName = JSDataExchangeEditor.GetMethodArg_DelegateFuncionName(cachedType,
+                        methodName, methodTag, i);
 
                     //if (p.ParameterType.IsGenericType)
                     if (p.ParameterType.ContainsGenericParameters)
@@ -731,26 +617,26 @@ public static class CSGenerator
 
                         sbGetParam.AppendFormat("object arg{0} = JSDataExchangeMgr.GetJSArg<object>(()=>[[\n", i);
                         sbGetParam.AppendFormat("    if (JSApi.isFunctionS((int)JSApi.GetType.Arg)) [[\n");
-                        sbGetParam.AppendFormat("        var getDelegateFun{0} = typeof({1}).GetMethod(\"{2}\").MakeGenericMethod\n", i, thisClassName, delegateGetName);
-                        sbGetParam.AppendFormat("            (method.GetParameters()[{0}].ParameterType.GetGenericArguments());\n", i);
-                        sbGetParam.AppendFormat("        return getDelegateFun{0}.Invoke(null, new object[][[{1}]]);\n", i, "JSApi.getFunctionS((int)JSApi.GetType.Arg)");
+                        sbGetParam.AppendFormat(
+                            "        var getDelegateFun{0} = typeof({1}).GetMethod(\"{2}\").MakeGenericMethod\n", i,
+                            thisClassName, delegateGetName);
+                        sbGetParam.AppendFormat(
+                            "            (method.GetParameters()[{0}].ParameterType.GetGenericArguments());\n", i);
+                        sbGetParam.AppendFormat(
+                            "        return getDelegateFun{0}.Invoke(null, new object[][[{1}]]);\n", i,
+                            "JSApi.getFunctionS((int)JSApi.GetType.Arg)");
                         sbGetParam.Append("    ]]\n");
                         sbGetParam.Append("    else\n");
                         sbGetParam.AppendFormat("        return JSMgr.datax.getObject((int)JSApi.GetType.Arg);\n");
                         sbGetParam.Append("]]);\n");
-
-
-//                         sbGetParam.AppendFormat("        var getDelegateFun{0} = typeof({1}).GetMethod(\"{2}\").MakeGenericMethod\n", i, thisClassName, delegateGetName);
-//                         sbGetParam.AppendFormat("            (method.GetParameters()[{0}].ParameterType.GetGenericArguments());\n", i);
-//                         sbGetParam.AppendFormat("        object arg{0} = getDelegateFun{0}.Invoke(null, new object[][[{1}]]);\n", i, "vc.getJSFunctionValue()");
-                    }   
+                    }
                     else
                     {
                         sbGetParam.AppendFormat("        {0} arg{1} = {2};\n",
-                                                JSNameMgr.GetTypeFullName(p.ParameterType), // [0]
-                                                i, // [1]
-                                                JSDataExchangeEditor.Build_GetDelegate(delegateGetName, p.ParameterType) // [2]
-                                                );
+                            JSNameMgr.GetTypeFullName(p.ParameterType), // [0]
+                            i, // [1]
+                            JSDataExchangeEditor.Build_GetDelegate(delegateGetName, p.ParameterType) // [2]
+                            );
                     }
                 }
                 else
@@ -761,9 +647,9 @@ public static class CSGenerator
                 // value type array
                 // no 'out' nor 'ref'
                 if ((p.ParameterType.IsByRef || p.IsOut) && !p.ParameterType.IsArray)
-                    sbActualParam.AppendFormat("{0} arg{1}{2}", (p.IsOut) ? "out" : "ref", i, (i == j - 1 ? "" : ", "));
+                    sbActualParam.AppendFormat("{0} arg{1}{2}", p.IsOut ? "out" : "ref", i, i == j - 1 ? "" : ", ");
                 else
-                    sbActualParam.AppendFormat("arg{0}{1}", i, (i == j - 1 ? "" : ", "));
+                    sbActualParam.AppendFormat("arg{0}{1}", i, i == j - 1 ? "" : ", ");
 
                 // updater
                 sbUpdateRefParam.Append(paramHandlers[i].updater);
@@ -777,53 +663,43 @@ public static class CSGenerator
              */
             if (bConstructor)
             {
-                StringBuilder sbCall = new StringBuilder();
+                var sbCall = new StringBuilder();
 
                 if (!cachedType.IsGenericTypeDefinition)
-                    sbCall.AppendFormat("new {0}({1})", JSNameMgr.GetTypeFullName(cachedType), sbActualParam.ToString());
+                    sbCall.AppendFormat("new {0}({1})", JSNameMgr.GetTypeFullName(cachedType), sbActualParam);
                 else
                 {
                     sbCall.AppendFormat("constructor.Invoke(null, new object[][[{0}]])", sbActualParam);
                 }
 
-                // string callAndReturn = JSDataExchangeEditor.Get_Return(type/*don't use returnType*/, sbCall.ToString());
-                string callAndReturn = new StringBuilder().AppendFormat("        JSMgr.addJSCSRel(_this, {0});", sbCall).ToString();
+                string callAndReturn =
+                    new StringBuilder().AppendFormat("        JSMgr.addJSCSRel(_this, {0});", sbCall).ToString();
 
-                sb.AppendFormat("    {0}if (len == {1})\n", (j == minNeedParams) ? "" : "else ", j);
+                sb.AppendFormat("    {0}if (len == {1})\n", j == minNeedParams ? "" : "else ", j);
                 sb.Append("    [[\n");
                 sb.Append(sbGetParam);
                 sb.Append(callAndReturn).Append("\n");
-                if (sbUpdateRefParam.Length > 0) 
+                if (sbUpdateRefParam.Length > 0)
                     sb.Append(sbUpdateRefParam);
                 sb.Append("    ]]\n");
 
-//                 sb.AppendFormat(@"    {0}if (len == {1}) 
-//     [[
-// {2}
-//         {3}
-// {4}
-//     ]]
-// ",
-//                  (j == minNeedParams) ? "" : "else ", // [0] else
-//                  j,                  // [1] param length
-//                  sbGetParam,         // [2] get param
-//                  callAndReturn,      // [3] 
-//                  sbUpdateRefParam);  // [4] update ref/out params
             }
             else
             {
-                StringBuilder sbCall = new StringBuilder();
-                StringBuilder sbActualParamT_arr = new StringBuilder();
+                var sbCall = new StringBuilder();
+                var sbActualParamT_arr = new StringBuilder();
                 //StringBuilder sbUpdateRefT = new StringBuilder();
 
                 if (TCount == 0 && !cachedType.IsGenericTypeDefinition)
                 {
                     if (bStatic)
-                        sbCall.AppendFormat("{0}.{1}({2})", JSNameMgr.GetTypeFullName(cachedType), methodName, sbActualParam.ToString());
+                        sbCall.AppendFormat("{0}.{1}({2})", JSNameMgr.GetTypeFullName(cachedType), methodName,
+                            sbActualParam);
                     else if (!cachedType.IsValueType)
-                        sbCall.AppendFormat("(({0})vc.csObj).{1}({2})", JSNameMgr.GetTypeFullName(cachedType), methodName, sbActualParam.ToString());
+                        sbCall.AppendFormat("(({0})vc.csObj).{1}({2})", JSNameMgr.GetTypeFullName(cachedType),
+                            methodName, sbActualParam);
                     else
-                        sbCall.AppendFormat("argThis.{0}({1})", methodName, sbActualParam.ToString());
+                        sbCall.AppendFormat("argThis.{0}({1})", methodName, sbActualParam);
                 }
                 else
                 {
@@ -855,7 +731,7 @@ public static class CSGenerator
                     sbStruct.AppendFormat("{0} argThis = ({0})vc.csObj;", JSNameMgr.GetTypeFullName(cachedType));
                 }
 
-                sb.AppendFormat("    {0}if (len == {1}) \n", (j == minNeedParams) ? "" : "else ", j);
+                sb.AppendFormat("    {0}if (len == {1}) \n", j == minNeedParams ? "" : "else ", j);
                 sb.Append("    [[\n");
                 sb.Append(sbGetParam);
                 if (sbActualParamT_arr.Length > 0)
@@ -878,30 +754,14 @@ public static class CSGenerator
                 }
                 sb.Append(sbUpdateRefParam);
                 sb.Append("    ]]\n");
-
-//                 sb.AppendFormat(@"    {0}if (len == {1}) 
-//     [[
-// {2}
-//         {3}
-//         {4}
-//         {5}
-// {6}
-//     ]]
-// ",
-//                  (j == minNeedParams) ? "" : "else ",  // [0] else
-//                  j, // [1] param count
-//                  sbGetParam,        // [2] get param
-//                  (type.IsValueType && !bStatic && TCount == 0 && !type.IsGenericTypeDefinition) ? sbStruct.ToString() : "",  // [3] if Struct, get argThis first
-//                  callAndReturn,  // [4] function call and return to js
-//                  (type.IsValueType && !bStatic && TCount == 0 && !type.IsGenericTypeDefinition) ? "JSMgr.changeJSObj(vc.jsObjID, argThis);" : "",  // [5] if Struct, update 'this' object
-//                  sbUpdateRefParam); // [6] update ref/out param
-
             }
         }
 
         return sb;
     }
-    public static StringBuilder BuildConstructors(Type type, ConstructorInfo[] constructors, int[] constructorsIndex, ClassCallbackNames ccbn)
+
+    public static StringBuilder BuildConstructors(Type type, ConstructorInfo[] constructors, int[] constructorsIndex,
+        ClassCallbackNames ccbn)
     {
         /*
         * methods
@@ -916,7 +776,7 @@ static bool {0}(JSVCall vc, int argc)
     return true;
 ]]
 ";
-        StringBuilder sb = new StringBuilder();
+        var sb = new StringBuilder();
         /*if (constructors.Length == 0 && JSBindingSettings.IsGeneratedDefaultConstructor(type) &&
             (type.IsValueType || (type.IsClass && !type.IsAbstract && !type.IsInterface)))
         {
@@ -933,24 +793,26 @@ static bool {0}(JSVCall vc, int argc)
 
         // increase index if adding default constructor
 //         int deltaIndex = 0;
-         if (JSBindingSettings.NeedGenDefaultConstructor(type))
-         {
+        if (JSBindingSettings.NeedGenDefaultConstructor(type))
+        {
 //             deltaIndex = 1;
-         }
+        }
 
         for (int i = 0; i < constructors.Length; i++)
         {
-            ConstructorInfo cons = constructors[i];
+            var cons = constructors[i];
 
             if (cons == null)
             {
-                sb.AppendFormat("public static ConstructorID constructorID{0} = new ConstructorID({1});\n", i, "null, null");
+                sb.AppendFormat("public static ConstructorID constructorID{0} = new ConstructorID({1});\n", i,
+                    "null, null");
 
                 // this is default constructor
                 //bool returnVoid = false;
                 //string functionName = type.Name + "_" + type.Name + "1";
                 int olIndex = i + 1; // for constuctors, they are always overloaded
-                string functionName = JSNameMgr.HandleFunctionName(type.Name + "_" + type.Name + (olIndex > 0 ? olIndex.ToString() : ""));
+                string functionName =
+                    JSNameMgr.HandleFunctionName(type.Name + "_" + type.Name + (olIndex > 0 ? olIndex.ToString() : ""));
 
                 sb.AppendFormat(fmt, functionName,
                     BuildNormalFunctionCall(0, new ParameterInfo[0], type.Name, false, null, true));
@@ -960,17 +822,17 @@ static bool {0}(JSVCall vc, int argc)
             }
             else
             {
-                ParameterInfo[] paramS = cons.GetParameters();
+                var paramS = cons.GetParameters();
                 int olIndex = i + 1; // for constuctors, they are always overloaded
-                int methodTag = i/* + deltaIndex*/;
+                int methodTag = i /* + deltaIndex*/;
 
                 for (int j = 0; j < paramS.Length; j++)
                 {
-                    ParameterInfo pInfo = paramS[j];
+                    var pInfo = paramS[j];
                     ccbn.nameSpaces.Add(pInfo.ParameterType.Namespace);
                     if (JSDataExchangeEditor.IsDelegateDerived(pInfo.ParameterType))
                     {
-                        StringBuilder sbD = JSDataExchangeEditor.Build_DelegateFunction(type, cons,
+                        var sbD = JSDataExchangeEditor.Build_DelegateFunction(type, cons,
                             pInfo.ParameterType, methodTag, j);
                         sb.Append(sbD);
                     }
@@ -979,29 +841,31 @@ static bool {0}(JSVCall vc, int argc)
                 // ConstructorID
                 if (type.IsGenericTypeDefinition)
                 {
-                    cg.args arg = new cg.args();
-                    cg.args arg1 = new cg.args();
-                    cg.args arg2 = new cg.args();
+                    var arg = new args();
+                    var arg1 = new args();
+                    var arg2 = new args();
 
-                    foreach (ParameterInfo p in cons.GetParameters())
+                    foreach (var p in cons.GetParameters())
                     {
-                        cg.args argFlag = ParameterInfo2TypeFlag(p);
+                        var argFlag = ParameterInfo2TypeFlag(p);
                         arg1.AddFormat("\"{0}\"", p.ParameterType.Name);
-                        arg2.Add(argFlag.Format(cg.args.ArgsFormat.Flag));
+                        arg2.Add(argFlag.Format(args.ArgsFormat.Flag));
                     }
 
                     if (arg1.Count > 0)
-                        arg.AddFormat("new string[]{0}", arg1.Format(cg.args.ArgsFormat.Brace));
+                        arg.AddFormat("new string[]{0}", arg1.Format(args.ArgsFormat.Brace));
                     else
                         arg.Add("null");
                     if (arg2.Count > 0)
-                        arg.AddFormat("new TypeFlag[]{0}", arg2.Format(cg.args.ArgsFormat.Brace));
+                        arg.AddFormat("new TypeFlag[]{0}", arg2.Format(args.ArgsFormat.Brace));
                     else
                         arg.Add("null");
-                    sb.AppendFormat("public static ConstructorID constructorID{0} = new ConstructorID({1});\n", i, arg.ToString());
+                    sb.AppendFormat("public static ConstructorID constructorID{0} = new ConstructorID({1});\n", i, arg);
                 }
 
-                string functionName = JSNameMgr.HandleFunctionName(type.Name + "_" + type.Name + (olIndex > 0 ? olIndex.ToString() : "") + (cons.IsStatic ? "_S" : ""));
+                string functionName =
+                    JSNameMgr.HandleFunctionName(type.Name + "_" + type.Name + (olIndex > 0 ? olIndex.ToString() : "") +
+                                                 (cons.IsStatic ? "_S" : ""));
 
                 sb.AppendFormat(fmt, functionName,
                     BuildNormalFunctionCall(methodTag, paramS, cons.Name, cons.IsStatic, null, true, 0));
@@ -1012,7 +876,9 @@ static bool {0}(JSVCall vc, int argc)
         }
         return sb;
     }
-    public static StringBuilder BuildMethods(Type type, MethodInfo[] methods, int[] methodsIndex, int[] olInfo, ClassCallbackNames ccbn)
+
+    public static StringBuilder BuildMethods(Type type, MethodInfo[] methods, int[] methodsIndex, int[] olInfo,
+        ClassCallbackNames ccbn)
     {
         /*
         * methods
@@ -1027,15 +893,15 @@ static bool {0}(JSVCall vc, int argc)
     return true;
 ]]
 ";
-        StringBuilder sb = new StringBuilder();
+        var sb = new StringBuilder();
         for (int i = 0; i < methods.Length; i++)
         {
-            MethodInfo method = methods[i];
-            ParameterInfo[] paramS = method.GetParameters();
+            var method = methods[i];
+            var paramS = method.GetParameters();
 
             for (int j = 0; j < paramS.Length; j++)
             {
-                ParameterInfo pInfo = paramS[j];
+                var pInfo = paramS[j];
                 ccbn.nameSpaces.Add(pInfo.ParameterType.Namespace);
                 //                 if (pInfo.ParameterType == typeof(DaikonForge.Tween.TweenAssignmentCallback<Vector3>))
                 //                 {
@@ -1045,7 +911,7 @@ static bool {0}(JSVCall vc, int argc)
                 if (JSDataExchangeEditor.IsDelegateDerived(pInfo.ParameterType))
                 {
                     // StringBuilder sbD = JSDataExchangeEditor.BuildFunctionArg_DelegateFunction(type.Name, method.Name, pInfo.ParameterType, i, j);
-                    StringBuilder sbD = JSDataExchangeEditor.Build_DelegateFunction(type, method,
+                    var sbD = JSDataExchangeEditor.Build_DelegateFunction(type, method,
                         pInfo.ParameterType, i, j);
 
                     sb.Append(sbD);
@@ -1055,7 +921,7 @@ static bool {0}(JSVCall vc, int argc)
             // MethodID
             if (type.IsGenericTypeDefinition || method.IsGenericMethodDefinition)
             {
-                cg.args arg = new cg.args();
+                var arg = new args();
                 arg.AddFormat("\"{0}\"", method.Name);
 
                 arg.AddFormat("\"{0}\"", method.ReturnType.Name);
@@ -1068,42 +934,45 @@ static bool {0}(JSVCall vc, int argc)
                     arg.Add("TypeFlag.None");
                 }
 
-                cg.args arg1 = new cg.args();
-                cg.args arg2 = new cg.args();
+                var arg1 = new args();
+                var arg2 = new args();
 
-                foreach (ParameterInfo p in method.GetParameters())
+                foreach (var p in method.GetParameters())
                 {
                     // flag of a parameter
-                    cg.args argFlag = ParameterInfo2TypeFlag(p);
+                    var argFlag = ParameterInfo2TypeFlag(p);
 
                     arg1.AddFormat("\"{0}\"", p.ParameterType.Name);
-                    arg2.Add(argFlag.Format(cg.args.ArgsFormat.Flag));
+                    arg2.Add(argFlag.Format(args.ArgsFormat.Flag));
                 }
 
                 if (arg1.Count > 0)
-                    arg.AddFormat("new string[]{0}", arg1.Format(cg.args.ArgsFormat.Brace));
+                    arg.AddFormat("new string[]{0}", arg1.Format(args.ArgsFormat.Brace));
                 else
                     arg.Add("null");
                 if (arg2.Count > 0)
-                    arg.AddFormat("new TypeFlag[]{0}", arg2.Format(cg.args.ArgsFormat.Brace));
+                    arg.AddFormat("new TypeFlag[]{0}", arg2.Format(args.ArgsFormat.Brace));
                 else
                     arg.Add("null");
-                sb.AppendFormat("public static MethodID methodID{0} = new MethodID({1});\n", i, arg.ToString());
+                sb.AppendFormat("public static MethodID methodID{0} = new MethodID({1});\n", i, arg);
             }
 
             int olIndex = olInfo[i];
-            bool returnVoid = (method.ReturnType == typeof(void));
+            bool returnVoid = method.ReturnType == typeof (void);
 
-            string functionName = type.Name + "_" + method.Name + (olIndex > 0 ? olIndex.ToString() : "") + (method.IsStatic ? "_S" : "");
-            
+            string functionName = type.Name + "_" + method.Name + (olIndex > 0 ? olIndex.ToString() : "") +
+                                  (method.IsStatic ? "_S" : "");
+
             int TCount = 0;
-            if (method.IsGenericMethodDefinition) {
+            if (method.IsGenericMethodDefinition)
+            {
                 TCount = method.GetGenericArguments().Length;
             }
 
             // if you change functionName
             // also have to change code in 'Manual/' folder
-            functionName = JSNameMgr.HandleFunctionName(type.Name + "_" + SharpKitMethodName(method.Name, paramS, true, TCount));
+            functionName =
+                JSNameMgr.HandleFunctionName(type.Name + "_" + SharpKitMethodName(method.Name, paramS, true, TCount));
             if (method.IsSpecialName && method.Name == "op_Implicit" && paramS.Length > 0)
             {
                 functionName += "_to_" + method.ReturnType.Name;
@@ -1111,19 +980,21 @@ static bool {0}(JSVCall vc, int argc)
             if (UnityEngineManual.isManual(functionName))
             {
                 sb.AppendFormat(fmt, functionName, "    UnityEngineManual." + functionName + "(vc, argc);");
-			}
-			else if (!JSBindingSettings.IsSupportByDotNet2SubSet(functionName))
-			{
-				sb.AppendFormat(fmt, functionName, "    UnityEngine.Debug.LogError(\"This method is not supported by .Net 2.0 subset.\");");
-			}
+            }
+            else if (!JSBindingSettings.IsSupportByDotNet2SubSet(functionName))
+            {
+                sb.AppendFormat(fmt, functionName,
+                    "    UnityEngine.Debug.LogError(\"This method is not supported by .Net 2.0 subset.\");");
+            }
             else
             {
                 sb.AppendFormat(fmt, functionName,
-
-                    method.IsSpecialName ? BuildSpecialFunctionCall(paramS, type.Name, method.Name, method.IsStatic, returnVoid, method.ReturnType)
-                    : BuildNormalFunctionCall(i, paramS, method.Name, method.IsStatic, method.ReturnType, 
-                    false/* is constructor */, 
-                    TCount));
+                    method.IsSpecialName
+                        ? BuildSpecialFunctionCall(paramS, type.Name, method.Name, method.IsStatic, returnVoid,
+                            method.ReturnType)
+                        : BuildNormalFunctionCall(i, paramS, method.Name, method.IsStatic, method.ReturnType,
+                            false /* is constructor */,
+                            TCount));
             }
 
             ccbn.methods.Add(functionName);
@@ -1131,7 +1002,9 @@ static bool {0}(JSVCall vc, int argc)
         }
         return sb;
     }
-    public static StringBuilder BuildClass(Type type, StringBuilder sbFields, StringBuilder sbProperties, StringBuilder sbMethods, StringBuilder sbConstructors, StringBuilder sbRegister)
+
+    public static StringBuilder BuildClass(Type type, StringBuilder sbFields, StringBuilder sbProperties,
+        StringBuilder sbMethods, StringBuilder sbConstructors, StringBuilder sbRegister)
     {
         /*
         * class
@@ -1156,28 +1029,11 @@ static bool {0}(JSVCall vc, int argc)
 {5}
 ";
         var sb = new StringBuilder();
-        sb.AppendFormat(fmt, type.Name, sbFields.ToString(), sbProperties.ToString(), sbMethods.ToString(), sbConstructors.ToString(), sbRegister.ToString());
+        sb.AppendFormat(fmt, type.Name, sbFields, sbProperties, sbMethods, sbConstructors, sbRegister);
         return sb;
     }
 
-    // used for record information
-    public class ClassCallbackNames
-    {
-        // class type
-        public Type type;
-
-        public HashSet<string> nameSpaces;
-        public List<string> fields;
-        public List<string> properties;
-        public List<string> constructors;
-        public List<string> methods;
-
-        // genetated, generating CSParam code
-        public List<string> constructorsCSParam;
-        public List<string> methodsCSParam;
-    }
-    public static List<ClassCallbackNames> allClassCallbackNames;
-    static StringBuilder BuildRegisterFunction(ClassCallbackNames ccbn, GeneratorHelp.ATypeInfo ti)
+    private static StringBuilder BuildRegisterFunction(ClassCallbackNames ccbn, GeneratorHelp.ATypeInfo ti)
     {
         string fmt = @"
 public static void __Register()
@@ -1203,12 +1059,12 @@ public static void __Register()
     JSMgr.allCallbackInfo.Add(ci);
 ]]
 ";
-        StringBuilder sb = new StringBuilder();
+        var sb = new StringBuilder();
 
-        StringBuilder sbField = new StringBuilder();
-        StringBuilder sbProperty = new StringBuilder();
-        StringBuilder sbCons = new StringBuilder();
-        StringBuilder sbMethod = new StringBuilder();
+        var sbField = new StringBuilder();
+        var sbProperty = new StringBuilder();
+        var sbCons = new StringBuilder();
+        var sbMethod = new StringBuilder();
 
         for (int i = 0; i < ccbn.fields.Count; i++)
             sbField.AppendFormat("        {0},\n", ccbn.fields[i]);
@@ -1217,11 +1073,11 @@ public static void __Register()
         for (int i = 0; i < ccbn.constructors.Count; i++)
         {
             if (ccbn.constructors.Count == 1 && ti.constructors.Length == 0) // no constructors   add a default  so ...
-                sbCons.AppendFormat("        new JSMgr.MethodCallBackInfo({0}, '{1}'),\n", 
+                sbCons.AppendFormat("        new JSMgr.MethodCallBackInfo({0}, '{1}'),\n",
                     ccbn.constructors[i],
                     cachedType.Name);
             else
-                sbCons.AppendFormat("        new JSMgr.MethodCallBackInfo({0}, '{1}'),\n", 
+                sbCons.AppendFormat("        new JSMgr.MethodCallBackInfo({0}, '{1}'),\n",
                     ccbn.constructors[i],
                     ti.constructors[i] == null ? ".ctor" : ti.constructors[i].Name);
         }
@@ -1229,8 +1085,8 @@ public static void __Register()
         {
             // if method is not overloaded
             // don's save the cs param array
-            sbMethod.AppendFormat("        new JSMgr.MethodCallBackInfo({0}, '{1}'),\n", 
-                ccbn.methods[i], 
+            sbMethod.AppendFormat("        new JSMgr.MethodCallBackInfo({0}, '{1}'),\n",
+                ccbn.methods[i],
                 ti.methods[i].Name);
         }
 
@@ -1238,29 +1094,15 @@ public static void __Register()
         return sb;
     }
 
-    private const string REGISTER_HEADER = @"using UnityEngine;
-public class CSGenerateRegister
-[[
-    public static void RegisterAll()
-    [[
-        if (JSMgr.allCallbackInfo.Count != 0)
-        [[
-            Debug.LogError(""Has already register CS binding"");
-        ]]
-{0}
-    ]]
-]]
-";
-    static string registerFile = Application.dataPath + "/JSBinding/Source/CSGenerateRegister.cs";
     public static void GenerateRegisterAll()
     {
-        StringBuilder sbA = new StringBuilder();
+        var sbA = new StringBuilder();
         for (int i = 0; i < exportTypeList.Count; i++)
         {
             sbA.AppendFormat("        {0}Generated.__Register();\n",
                 JSNameMgr.GetTypeFileName(exportTypeList[i]));
         }
-        StringBuilder sb = new StringBuilder();
+        var sb = new StringBuilder();
         sb.AppendFormat(REGISTER_HEADER, sbA);
         HandleStringFormat(sb);
 
@@ -1270,60 +1112,7 @@ public class CSGenerateRegister
         writer2.Write(sb.ToString());
         writer2.Close();
     }
-//    public static void GenerateAllJSFileNames2()
-//    {
-////         if (!JSGenerator2.typeClassName.ContainsKey(typeof(UnityEngine.Object)))
-////             JSGenerator2.typeClassName.Add(typeof(UnityEngine.Object), "UnityObject");
-//
-//        string fmt = @"
-//public class JSGeneratedFileNames
-//[[
-//    public static string[] names = new string[]
-//    [[
-//{0}
-//    ]];
-//]]
-//";
-//        StringBuilder sbA = new StringBuilder();
-//        for (int i = 0; i < JSBindingSettings.classes.Length; i++)
-//        {
-//            string name = JSNameMgr.GetTypeFileName(JSBindingSettings.classes[i]).Replace('.', '_');
-//            if (JSGenerator.typeClassName.ContainsKey(JSBindingSettings.classes[i]))
-//                name = JSGenerator.typeClassName[JSBindingSettings.classes[i]];
-//            sbA.AppendFormat("        \"{0}\",\n", name);
-//        }
-//        StringBuilder sb = new StringBuilder();
-//        sb.AppendFormat(fmt, sbA);
-//        HandleStringFormat(sb);
-//
-//        sb.Replace("\r\n", "\n");
-//
-//        string fileName = JSBindingSettings.csGeneratedDir + "/" + "AllJSFileNames.cs";
-//        var writer2 = OpenFile(fileName, false);
-//        writer2.Write(sb.ToString());
-//        writer2.Close();
-//    }
-    public static void GenerateAllJSFileNames()
-    {
-        //         if (!JSGenerator2.typeClassName.ContainsKey(typeof(UnityEngine.Object)))
-        //             JSGenerator2.typeClassName.Add(typeof(UnityEngine.Object), "UnityObject");
 
-        StringBuilder sb = new StringBuilder();
-        sb.Append(@"/* Generated by JSBinding. */
-");
-        for (int i = 0; i < JSBindingSettings.classes.Length; i++)
-        {
-            string name = JSNameMgr.GetTypeFileName(JSBindingSettings.classes[i]).Replace('.', '_');
-            if (JSGenerator.typeClassName.ContainsKey(JSBindingSettings.classes[i]))
-                name = JSGenerator.typeClassName[JSBindingSettings.classes[i]];
-            sb.AppendFormat("CS.require(\"Generated/{0}\");\n", name);
-        }
-
-        string fileName = JSPathSettings.jsGeneratedFiles;
-        var writer2 = OpenFile(fileName, false);
-        writer2.Write(sb.ToString());
-        writer2.Close();
-    }
     public static void GenerateClass()
     {
         /*if (type.IsInterface)
@@ -1335,14 +1124,8 @@ public class CSGenerateRegister
         GeneratorHelp.ATypeInfo ti;
         /*int slot = */
         GeneratorHelp.AddTypeInfo(cachedType, out ti);
-//         var sbCons = BuildConstructors(type, ti.constructors, slot);
-//         var sbFields = BuildFields(type, ti.fields, slot);
-//         var sbProperties = BuildProperties(type, ti.properties, slot);
-//         var sbMethods = BuildMethods(type, ti.methods, slot);
-//         var sbClass = BuildClass(type, sbFields, sbProperties, sbMethods, sbCons);
-//         HandleStringFormat(sbClass);
 
-        ClassCallbackNames ccbn = new ClassCallbackNames();
+        var ccbn = new ClassCallbackNames();
         {
             ccbn.type = cachedType;
             ccbn.fields = new List<string>(ti.fields.Length);
@@ -1358,7 +1141,7 @@ public class CSGenerateRegister
                 "System",
                 "System.Collections",
                 "System.Collections.Generic",
-                "System.Reflection",
+                "System.Reflection"
             };
         }
 
@@ -1391,13 +1174,13 @@ public class {0}
 ]]
 ";
         var sbFile = new StringBuilder();
-        StringBuilder nsBuilder = new StringBuilder();
+        var nsBuilder = new StringBuilder();
         if (cachedType.Namespace != null)
         {
             ccbn.nameSpaces.Add(cachedType.Namespace);
         }
         //Generate Using NameSpace
-        foreach (var ns in ccbn.nameSpaces)
+        foreach (string ns in ccbn.nameSpaces)
         {
             if (!string.IsNullOrEmpty(ns))
                 nsBuilder.AppendLine("using " + ns + ";");
@@ -1408,8 +1191,8 @@ public class {0}
         sbFile.Replace("\r\n", "\n");
 
         string fileName = JSPathSettings.csGeneratedDir + "/" +
-            JSNameMgr.GetTypeFileName(cachedType) + 
-            "Generated.cs";
+                          JSNameMgr.GetTypeFileName(cachedType) +
+                          "Generated.cs";
         var writer2 = OpenFile(fileName, false);
         writer2.Write(sbFile.ToString());
         writer2.Close();
@@ -1420,68 +1203,37 @@ public class {0}
         cachedType = null;
         sb = new StringBuilder();
     }
-    static void GenEnd()
-    {
-        string fmt = @"
-]]
-";
-        sb.Append(fmt);
-    }
 
-    static void WriteUsingSection(StreamWriter writer)
-    {
-        string fmt = @"using System;
-using UnityEngine;
-";
-        writer.Write(fmt);
-    }
-    static StreamWriter OpenFile(string fileName, bool bAppend = false)
+    private static StreamWriter OpenFile(string fileName, bool bAppend = false)
     {
         return new StreamWriter(fileName, bAppend, Encoding.UTF8);
     }
 
-    static void HandleStringFormat(StringBuilder sb)
+    private static void HandleStringFormat(StringBuilder sb)
     {
         sb.Replace("[[", "{");
         sb.Replace("]]", "}");
         sb.Replace("'", "\"");
     }
 
-    /* 
-     * Some classes have another name
-     * for example: js has 'Object'
-     */
-    //static Dictionary<Type, string> typeClassName = new Dictionary<Type, string>();
-    //static string className = string.Empty;
-
-//     public class TEST2
-//     {
-//         public void Add()
-//        
-    public static void MakeJJJ(ref int i)
-    {
-
-    }
-
-    public static List<Type> exportTypeList;
     public static bool CheckClassBindings()
     {
-        HashSet<Type> clrLibrary = new HashSet<Type>()
+        var clrLibrary = new HashSet<Type>
         {
             //
             // these types are defined in clrlibrary.javascript
             //
-            typeof (System.Object),
-            typeof (System.Exception),
-            typeof (System.SystemException),
-            typeof (System.ValueType),
+            typeof (object),
+            typeof (Exception),
+            typeof (SystemException),
+            typeof (ValueType)
         };
 
-        HashSet<Type> exportTypeSet = new HashSet<Type>();
+        var exportTypeSet = new HashSet<Type>();
         var logBuilder = new StringBuilder();
         bool checkSuccess = true;
 
-        Type delegateType = typeof(System.Delegate);
+        var delegateType = typeof (Delegate);
         //验证JSBindingSettings.classes导出列表的正确性
         foreach (var type in JSBindingSettings.classes)
         {
@@ -1525,17 +1277,18 @@ using UnityEngine;
         //将需要导出的dll里所有类型加入原始列表当中
         foreach (var assemblyItem in JSBindingSettings.customAssembly)
         {
-            Assembly assembly = Assembly.Load(assemblyItem.Key);
-            HashSet<string> exportNsSet = new HashSet<string>(assemblyItem.Value.Split('|'));
-            Type[] types = assembly.GetExportedTypes();
-            foreach (Type type in types)
+            var assembly = Assembly.Load(assemblyItem.Key);
+            var exportNsSet = new HashSet<string>(assemblyItem.Value.Split('|'));
+            var types = assembly.GetExportedTypes();
+            foreach (var type in types)
             {
                 if (type.Namespace != null && !exportNsSet.Contains(type.Namespace))
                     continue;
                 if (type.IsInterface)
                     continue;
                 if (type.IsEnum)
-                    continue; ;
+                    continue;
+                ;
                 if (delegateType.IsAssignableFrom(type))
                     continue;
                 if (type.IsGenericType && !type.IsGenericTypeDefinition)
@@ -1543,7 +1296,7 @@ using UnityEngine;
 
                 exportTypeSet.Add(type);
 
-                Type baseType = type.BaseType;
+                var baseType = type.BaseType;
                 if (baseType != null)
                 {
                     if (baseType.IsGenericType) baseType = baseType.GetGenericTypeDefinition();
@@ -1560,7 +1313,7 @@ using UnityEngine;
         //检查是否有导出父类
         foreach (var type in exportTypeSet)
         {
-            Type baseType = type.BaseType;
+            var baseType = type.BaseType;
             if (baseType == null) continue;
             if (baseType.IsGenericType) baseType = baseType.GetGenericTypeDefinition();
             // System.Object is already defined in SharpKit clrlibrary
@@ -1572,37 +1325,25 @@ using UnityEngine;
                 checkSuccess = false;
             }
 
-			// 检查 interface 有没有配置		
-			Type[] interfaces = type.GetInterfaces();
-			for (int i = 0; i < interfaces.Length; i++)
-			{
-				Type ti = interfaces[i];
+            // 检查 interface 有没有配置		
+            var interfaces = type.GetInterfaces();
+            for (int i = 0; i < interfaces.Length; i++)
+            {
+                var ti = interfaces[i];
 
-				string tiFullName = JSNameMgr.GetTypeFullName(ti);
+                string tiFullName = JSNameMgr.GetTypeFullName(ti);
 
-				// 这个检查有点奇葩
-				// 有些接口带 <>，这里直接忽略，不检查他
-				if (!tiFullName.Contains("<") && tiFullName.Contains(">") && 
-				    !clrLibrary.Contains(ti) && !exportTypeSet.Contains(ti))
-				{
-					logBuilder.AppendFormat("\"{0}\"\'s interface \"{1}\" must also be in JSBindingSettings.classes.\n",
-					                JSNameMgr.GetTypeFullName(type),
-					                JSNameMgr.GetTypeFullName(ti));
-					checkSuccess = false;
-				}
-			}
-
-//             foreach (var Interface in type.GetInterfaces())
-//             {
-//                 if (!dict.ContainsKey(Interface))
-//                 {
-//                     sb.AppendFormat("Interface \"{0}\" of \"{1}\" must also be in JSBindingSettings.classes.",
-//                         JSNameMgr.GetTypeFullName(Interface),
-//                         JSNameMgr.GetTypeFullName(type));
-//                     Debug.LogError(sb);
-//                     return false;
-//                 }
-            //             }
+                // 这个检查有点奇葩
+                // 有些接口带 <>，这里直接忽略，不检查他
+                if (!tiFullName.Contains("<") && tiFullName.Contains(">") &&
+                    !clrLibrary.Contains(ti) && !exportTypeSet.Contains(ti))
+                {
+                    logBuilder.AppendFormat("\"{0}\"\'s interface \"{1}\" must also be in JSBindingSettings.classes.\n",
+                        JSNameMgr.GetTypeFullName(type),
+                        JSNameMgr.GetTypeFullName(ti));
+                    checkSuccess = false;
+                }
+            }
         }
         if (!checkSuccess)
         {
@@ -1616,127 +1357,97 @@ using UnityEngine;
         return checkSuccess;
     }
 
-    //[MenuItem("JSBinding/Generate CS Bindings")]
     public static void GenerateClassBindings()
     {
-        CSGenerator.OnBegin();
-
-        allClassCallbackNames = new List<ClassCallbackNames>(exportTypeList.Count);
+        OnBegin();
 
         for (int i = 0; i < exportTypeList.Count; i++)
         {
-            CSGenerator.Clear();
-            CSGenerator.cachedType = exportTypeList[i];
-            CSGenerator.GenerateClass();
+            Clear();
+            cachedType = exportTypeList[i];
+            GenerateClass();
         }
         GenerateRegisterAll();
 
-        CSGenerator.OnEnd();
+        OnEnd();
     }
 
-    public static void OuputGameObjectHierachy(StringBuilder sb, GameObject go, int tab)
+    public static void Type2TypeFlag(Type type, args argFlag)
     {
-        for (var t = 0; t < tab; t++)
-            sb.Append("    ");
-        sb.Append(go.name + "  (");
-
-        var coms = go.GetComponents(typeof(Component));
-        for (var c = 0; c < coms.Length; c++)
+        if (type.IsByRef)
         {
-            sb.Append(coms[c].GetType().Name);
-            if (c != coms.Length - 1)
-            {
-                sb.Append(" | ");
-            }
+            argFlag.Add("TypeFlag.IsRef");
+            type = type.GetElementType();
         }
-        sb.Append(")\n");
 
-        var childCount = go.transform.childCount;
-        for (var i = 0; i < childCount; i++)
+        if (type.IsGenericParameter)
         {
-            Transform child = go.transform.GetChild(i);
-            OuputGameObjectHierachy(sb, child.gameObject, tab + 1);
+            argFlag.Add("TypeFlag.IsT");
         }
+        else if (type.IsGenericType)
+        {
+            argFlag.Add("TypeFlag.IsGenericType");
+        }
+
+        if (type.IsArray)
+            argFlag.Add("TypeFlag.IsArray");
     }
 
-//     [MenuItem("JSB/IterateAllPrefabs")]
-//     public static void IterateAllPrefabs()
-//     {
-//         StringBuilder sb = new StringBuilder();
-//         string[] GUIDs = AssetDatabase.FindAssets("t:prefab");
-//         foreach (var guid in GUIDs)
-//         {
-//             //UnityEngine.Object obj = AssetDatabase.LoadMainAssetAtPath(path);
-//             //sb.Append(obj.name + "\n");
-// 
-//             string path = AssetDatabase.GUIDToAssetPath(guid);
-// 
-//             UnityEngine.Object mainAsset = AssetDatabase.LoadMainAssetAtPath(path);
-//             if (mainAsset is GameObject)
-//             {
-//                 // sb.Append(mainAsset.GetType().Name + " / " + mainAsset.name + "\n");
-//                 OuputGameObjectHierachy(sb, (GameObject)mainAsset, 1);
-//             }
-// 
-//             sb.Append("\n");
-//         }
-//         Debug.Log(sb);
-//        
-//    }
-    //[MenuItem("Assets/JSBinding/Read serialized data test")]
-    public static void ReadSerializedDataTest()
+    public static args ParameterInfo2TypeFlag(ParameterInfo p)
     {
-        AssetDatabase.FindAssets("backgrounds", new string[]{"Assets/Prefabs/Environment"});
+        var argFlag = new args();
+
+        Type2TypeFlag(p.ParameterType, argFlag);
+
+        if (p.IsOut)
+            argFlag.Add("TypeFlag.IsOut");
+
+        if (argFlag.Count == 0)
+            argFlag.Add("TypeFlag.None");
+
+        return argFlag;
     }
+
+    #region Menu Option
+
     [MenuItem("JSB/Generate JS and CS Bindings", false, 1)]
     public static void GenerateJSCSBindings()
-	{
-		if (EditorApplication.isCompiling)
-		{
-			
-			EditorUtility.DisplayDialog("Tip:",
-			                            "please wait EditorApplication Compiling",
-			                            "OK"
-			                            );
-			return; 
-		}
+    {
+        if (EditorApplication.isCompiling)
+        {
+            EditorUtility.DisplayDialog("Tip:",
+                "please wait EditorApplication Compiling",
+                "OK"
+                );
+            return;
+        }
 
 
-		if (!CheckClassBindings())
+        if (!CheckClassBindings())
             return;
 
 
         bool bContinue;
         bContinue = EditorUtility.DisplayDialog("TIP",
-             "Files in these directories will all be deleted and re-created: \n" +
-              //JSBindingSettings.jsGeneratedDir + "\n" + 
-              JSPathSettings.csGeneratedDir + "\n",
-             "OK",
-             "Cancel");
+            "Files in these directories will all be deleted and re-created: \n" +
+            JSPathSettings.csGeneratedDir + "\n",
+            "OK",
+            "Cancel");
         if (!bContinue)
         {
-            Debug.Log("Operation cancelled"); ;
+            Debug.Log("Operation cancelled");
+            ;
             return;
         }
 
         JSDataExchangeEditor.reset();
         UnityEngineManual.initManual();
-        CSGenerator.GenerateClassBindings();
+        GenerateClassBindings();
         JSGenerator.GenerateClassBindings();
         UnityEngineManual.afterUse();
 
-        // TODO
-        // should not be here
-        //         bContinue = EditorUtility.DisplayDialog("TIP",
-        //              "Also correct JavaScript yield code?\n(Choose 'Yes' if you have coroutine code)",
-        //              "Yes",
-        //              "No");
-        //         if (bContinue)
-        //         {
-        //             JSAnalyzer.CorrectJavaScriptYieldCode();
-        //         }
-
-        Debug.Log(string.Format("<color={1}>Generate CS Bindings OK. total = {0}</color>", exportTypeList.Count, "orange"));
+        Debug.Log(string.Format("<color={1}>Generate CS Bindings OK. total = {0}</color>", exportTypeList.Count,
+            "orange"));
         AssetDatabase.Refresh();
     }
 
@@ -1758,7 +1469,7 @@ using UnityEngine;
         //删除所有C#导出类
         if (Directory.Exists(JSPathSettings.csGeneratedDir))
         {
-            string[] files = Directory.GetFiles(JSPathSettings.csGeneratedDir);
+            var files = Directory.GetFiles(JSPathSettings.csGeneratedDir);
             for (int i = 0; i < files.Length; i++)
             {
                 File.Delete(files[i]);
@@ -1770,7 +1481,7 @@ using UnityEngine;
         }
 
         //清空Register接口注册
-        StringBuilder sb = new StringBuilder();
+        var sb = new StringBuilder();
         sb.AppendFormat(REGISTER_HEADER, "");
         HandleStringFormat(sb);
         sb.Replace("\r\n", "\n");
@@ -1787,149 +1498,5 @@ using UnityEngine;
         AssetDatabase.Refresh();
     }
 
-    //[MenuItem("Assets/JSBinding/1Output All T Functions")]
-    public static void OutputAllTFunctionsInUnityEngine()
-    {
-        var writer = new StreamWriter(tempFile, false, Encoding.UTF8);
-        var asm = typeof(GameObject).Assembly;
-        var alltypes = asm.GetTypes();
-
-        for (int i = 0; i < alltypes.Length; i++)
-        {
-            Type type = alltypes[i];
-            // if (type.IsClass)
-            var methods = type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly);
-            for (int j = 0; j < methods.Length; j++)
-            {
-                var method = methods[j];
-                if (method.IsGenericMethod || method.IsGenericMethodDefinition)
-                {
-                    writer.WriteLine(type.ToString() + "." + method.Name + "\n");
-                }
-            }
-        }
-        writer.Close();
-
-        Debug.Log("Output All T Functions finish, file: " + tempFile);
-    }
-
-    //[MenuItem("JSB/Tool/Output All Types in UnityEngine.dll")]
-    public static void OutputAllTypesInUnityEngine()
-    {
-        var asm = typeof(GameObject).Assembly;
-        OutputAllTypesInAssembly(asm);
-    }
-
-
-    //[MenuItem("JSB/Tool/Output All Types in UnityEngine.UI.dll")]
-    public static void OutputAllTypesInUnityEngineUI()
-    {
-        //var asm = typeof(UnityEngine.EventSystems.UIBehaviour).Assembly;
-        //OutputAllTypesInAssembly(asm);
-    }
-
-    public static void OutputAllTypesInAssembly(Assembly asm)
-    {
-        var alltypes = asm.GetTypes();
-        var writer = new StreamWriter(tempFile, false, Encoding.UTF8);
-
-        writer.WriteLine("// enum");
-        writer.WriteLine("");
-        for (int i = 0; i < alltypes.Length; i++)
-        {
-            if (!alltypes[i].IsPublic && !alltypes[i].IsNestedPublic)
-                continue;
-
-            if (alltypes[i].IsEnum)
-                writer.WriteLine(alltypes[i].ToString());
-        }
-
-        writer.WriteLine("");
-        writer.WriteLine("// interface");
-        writer.WriteLine("");
-
-        for (int i = 0; i < alltypes.Length; i++)
-        {
-            if (!alltypes[i].IsPublic && !alltypes[i].IsNestedPublic)
-                continue;
-
-            if (alltypes[i].IsInterface)
-                writer.WriteLine(alltypes[i].ToString());
-        }
-
-        writer.WriteLine("");
-        writer.WriteLine("// class");
-        writer.WriteLine("");
-
-        for (int i = 0; i < alltypes.Length; i++)
-        {
-            if (!alltypes[i].IsPublic && !alltypes[i].IsNestedPublic)
-                continue;
-
-            if ((!alltypes[i].IsEnum && !alltypes[i].IsInterface) &&
-                alltypes[i].IsClass)
-            {
-                string s = alltypes[i].GetConstructors().Length.ToString() 
-                    + "/" +
-                    alltypes[i].GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static).Length.ToString();
-
-                writer.WriteLine(alltypes[i].ToString() + " " + s);
-            }
-        }
-
-
-        writer.WriteLine("");
-        writer.WriteLine("// ValueType");
-        writer.WriteLine("");
-
-        for (int i = 0; i < alltypes.Length; i++)
-        {
-            if (!alltypes[i].IsPublic && !alltypes[i].IsNestedPublic)
-                continue;
-
-            if ((!alltypes[i].IsEnum && !alltypes[i].IsInterface) &&
-                !alltypes[i].IsClass && alltypes[i].IsValueType)
-                writer.WriteLine(alltypes[i].ToString());
-        }
-
-        writer.Close();
-
-        Debug.Log("Output All Types in UnityEngine finish, file: " + tempFile);
-        return;
-    }
-
-    public static void Type2TypeFlag(Type type, cg.args argFlag)
-    {
-        if (type.IsByRef)
-        {
-            argFlag.Add("TypeFlag.IsRef");
-            type = type.GetElementType();
-        }
-
-        if (type.IsGenericParameter)
-        {
-            argFlag.Add("TypeFlag.IsT");
-        }
-        else if (type.IsGenericType)
-        {
-            argFlag.Add("TypeFlag.IsGenericType");
-        }
-
-        if (type.IsArray)
-            argFlag.Add("TypeFlag.IsArray");
-    }
-    public static cg.args ParameterInfo2TypeFlag(ParameterInfo p)
-    {
-        cg.args argFlag = new cg.args();
-
-        Type2TypeFlag(p.ParameterType, argFlag);
-
-        if (p.IsOut)
-            argFlag.Add("TypeFlag.IsOut");
-
-        if (argFlag.Count == 0)
-            argFlag.Add("TypeFlag.None");
-
-        return argFlag;
-    }
+    #endregion
 }
