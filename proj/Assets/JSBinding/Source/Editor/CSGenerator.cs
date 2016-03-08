@@ -41,7 +41,6 @@ public class CSGenerateRegister
 ]]
 ";
     // input
-    private static StringBuilder sb;
     public static Type cachedType;
     public static string thisClassName;
 
@@ -1099,7 +1098,7 @@ public static void __Register()
         var sbA = new StringBuilder();
         for (int i = 0; i < exportTypeList.Count; i++)
         {
-            sbA.AppendFormat("        {0}Generated.__Register();\n",
+            sbA.AppendFormat("        {0}.__Register();\n",
                 JSNameMgr.GetTypeFileName(exportTypeList[i]));
         }
         var sb = new StringBuilder();
@@ -1145,7 +1144,7 @@ public static void __Register()
             };
         }
 
-        thisClassName = JSNameMgr.GetTypeFileName(cachedType) + "Generated";
+        thisClassName = JSNameMgr.GetTypeFileName(cachedType);
 
         var sbFields = BuildFields(cachedType, ti.fields, ti.fieldsIndex, ccbn);
         var sbProperties = BuildProperties(cachedType, ti.properties, ti.propertiesIndex, ccbn);
@@ -1192,7 +1191,7 @@ public class {0}
 
         string fileName = JSPathSettings.csGeneratedDir + "/" +
                           JSNameMgr.GetTypeFileName(cachedType) +
-                          "Generated.cs";
+                          ".cs";
         var writer2 = OpenFile(fileName, false);
         writer2.Write(sbFile.ToString());
         writer2.Close();
@@ -1201,7 +1200,6 @@ public class {0}
     public static void Clear()
     {
         cachedType = null;
-        sb = new StringBuilder();
     }
 
     private static StreamWriter OpenFile(string fileName, bool bAppend = false)

@@ -12,8 +12,8 @@ public static class JSNameMgr
 {
     public static string GetTypeFileName(Type type)
     {
-        string fullName = GetTypeFullName(type);
-        return fullName.Replace('`', '_').Replace('.', '_').Replace('<', '7').Replace('>', '7').Replace(',', '_');
+        string fullName = GetTypeFullName(type).Replace('`', '_').Replace('.', '_').Replace('<', '7').Replace('>', '7').Replace(',', '_');
+        return "JSB_" + fullName;
     }
 
     public static string HandleFunctionName(string functionName)
