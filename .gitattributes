@@ -3,6 +3,15 @@
 ###############################################################################
 * text=auto
 
+# Explicitly declare text files you want to always be normalized and converted
+# to native line endings on checkout.
+*.cs text
+*.js text
+*.javascript text
+
+# Declare files that will always have CRLF line endings on checkout.
+*.sln text eol=crlf
+
 ###############################################################################
 # Set default behavior for command prompt diff.
 #
