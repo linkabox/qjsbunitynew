@@ -435,8 +435,7 @@ public static class JSSerializerEditor
     /// <returns></returns>
     public static bool WillTypeBeTranslatedToJavaScript(Type type)
     {
-        var typeAttrs = type.GetCustomAttributes(typeof(JsTypeAttribute), false);
-        if (typeAttrs.Length > 0)
+        if (type.IsDefined(typeof(JsTypeAttribute), false))
             return true;
 
 		if (JSAnalyzer.JsTypeNameSet.Contains (type.FullName))

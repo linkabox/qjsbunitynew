@@ -156,7 +156,7 @@ public class JSCache
                     else if (dictMB2JSComName.ContainsKey(JSNameMgr.GetTypeFullName(type, false)))
                         isCSMonoBehaviour = false;
                     // This is useful if source c# file still exists in project
-                    else if (type.GetCustomAttributes(typeof (JsTypeAttribute), false).Length > 0)
+                    else if (type.IsDefined(typeof (JsTypeAttribute), false))
                         isCSMonoBehaviour = false;
                     else
                         isCSMonoBehaviour = true;
