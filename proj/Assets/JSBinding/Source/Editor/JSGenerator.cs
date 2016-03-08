@@ -581,12 +581,12 @@ _jstype.staticDefinition.{1} = function({2}) [[
         OnBegin();
 
         // enums
-        for (int i = 0; i < JSBindingSettings.enums.Length; i++)
-        {
-            Clear();
-            cachedType = JSBindingSettings.enums[i];
-            GenerateEnum();
-        }
+        //for (int i = 0; i < JSBindingSettings.enums.Length; i++)
+        //{
+        //    Clear();
+        //    cachedType = JSBindingSettings.enums[i];
+        //    GenerateEnum();
+        //}
 
         // typeName -> member list
         var allDefs = new Dictionary<string, List<string>>();
@@ -620,7 +620,8 @@ _jstype.staticDefinition.{1} = function({2}) [[
         }
         File.WriteAllText(JSAnalyzer.GetAllExportedMembersFile(), sb.ToString());
 
-        Debug.Log("Generate JS Bindings OK. enum " + JSBindingSettings.enums.Length + ", class " +
-                  JSBindingSettings.classes.Length);
+        //Debug.Log("Generate JS Bindings OK. enum " + JSBindingSettings.enums.Length + ", class " +
+        //          JSBindingSettings.classes.Length);
+        Debug.Log("Generate JS Bindings OK. class " + JSBindingSettings.classes.Length);
     }
 }

@@ -18,13 +18,13 @@ using Random = UnityEngine.Random;
 
 public class JSBindingSettings
 {
-    public static Type[] enums =
-    {
-        /*
-         * No need to export enum anymore
-         * Enum should be 'compilied' by SharpKit only
-         */
-    };
+    //public static Type[] enums =
+    //{
+    //    /*
+    //     * No need to export enum anymore
+    //     * Enum should be 'compilied' by SharpKit only
+    //     */
+    //};
 
     public static Dictionary<string, string> customAssembly = new Dictionary<string, string>
     {
