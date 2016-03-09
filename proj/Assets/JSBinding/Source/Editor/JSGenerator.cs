@@ -277,9 +277,13 @@ if (!_found) [[
             sbI.Append("\n    interfaceNames: [");
             for (int i = 0; i < interfaces.Length; i++)
             {
-                sbI.AppendFormat("\'{0}\'", SharpKitClassName(interfaces[i]));
-                if (i < interfaces.Length - 1)
-                    sbI.Append(", ");
+                var iType = interfaces[i];
+                if (iType.IsPublic || iType.IsNestedPublic)
+                {
+                    sbI.AppendFormat("\'{0}\'", SharpKitClassName(interfaces[i]));
+                    if (i < interfaces.Length - 1)
+                        sbI.Append(", ");
+                }
             }
             sbI.Append("],");
         }
@@ -592,10 +596,10 @@ _jstype.staticDefinition.{1} = function({2}) [[
         var allDefs = new Dictionary<string, List<string>>();
 
         // classes
-        for (int i = 0; i < CSGenerator.exportTypeList.Count; i++)
+        foreach (Type type in CSGenerator.ExportTypeSet)
         {
             Clear();
-            cachedType = CSGenerator.exportTypeList[i];
+            cachedType = type;
             if (!typeClassName.TryGetValue(cachedType, out className))
                 className = cachedType.Name;
 
@@ -622,6 +626,6 @@ _jstype.staticDefinition.{1} = function({2}) [[
 
         //Debug.Log("Generate JS Bindings OK. enum " + JSBindingSettings.enums.Length + ", class " +
         //          JSBindingSettings.classes.Length);
-        Debug.Log("Generate JS Bindings OK. class " + JSBindingSettings.classes.Length);
+        Debug.Log("Generate JS Bindings OK. class " + CSGenerator.ExportTypeSet.Count);
     }
 }

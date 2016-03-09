@@ -54,7 +54,7 @@ public static class GeneratorHelp
         ti.properties = type.GetProperties(JSMgr.BindingFlagsProperty);
         ti.methods = type.GetMethods(JSMgr.BindingFlagsMethod);
         ti.constructors = type.GetConstructors();
-        if (JSBindingSettings.NeedGenDefaultConstructor(type))
+        if (JSBCodeGenSettings.NeedGenDefaultConstructor(type))
         {
             // null means it's default constructor
             var l = new List<ConstructorInfo>();
@@ -173,7 +173,7 @@ public static class GeneratorHelp
                 continue;
             }
 
-            if (!IsMemberObsolete(ti.constructors[i]) && !JSBindingSettings.IsDiscard(type, ti.constructors[i]))
+            if (!IsMemberObsolete(ti.constructors[i]) && !JSBCodeGenSettings.IsDiscardMemberInfo(type, ti.constructors[i]))
             {
                 lstCons.Add(new ConstructorInfoAndIndex(ti.constructors[i], i));
             }
@@ -188,7 +188,7 @@ public static class GeneratorHelp
             if (ti.fields[i].FieldType.ContainsGenericParameters)
                 continue;
 
-            if (!IsMemberObsolete(ti.fields[i]) && !JSBindingSettings.IsDiscard(type, ti.fields[i]))
+            if (!IsMemberObsolete(ti.fields[i]) && !JSBCodeGenSettings.IsDiscardMemberInfo(type, ti.fields[i]))
             {
                 lstField.Add(new FieldInfoAndIndex(ti.fields[i], i));
             }
@@ -221,7 +221,7 @@ public static class GeneratorHelp
             if (IsMemberObsolete(pro))
                 continue;
 
-            if (JSBindingSettings.IsDiscard(type, pro))
+            if (JSBCodeGenSettings.IsDiscardMemberInfo(type, pro))
                 continue;
 
             lstPro.Add(new PropertyInfoAndIndex(pro, i));
@@ -346,7 +346,7 @@ public static class GeneratorHelp
             }
 
 
-            if (JSBindingSettings.IsDiscard(type, method))
+            if (JSBCodeGenSettings.IsDiscardMemberInfo(type, method))
                 continue;
 
             lstMethod.Add(new MethodInfoAndIndex(method, i));

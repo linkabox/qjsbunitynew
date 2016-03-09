@@ -3,6 +3,8 @@ using System.Collections;
 
 public class PerTest
 {
+    public event System.Action OnFinish;
+    public System.Action OnUpdate;
     public bool toggle;
     public PerTest()
     {

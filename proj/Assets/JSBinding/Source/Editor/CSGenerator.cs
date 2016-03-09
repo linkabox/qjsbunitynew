@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Text;
 using cg;
@@ -46,7 +47,7 @@ public class CSGenerateRegister
 
     private static readonly string registerFile = Application.dataPath + "/JSBinding/Source/CSGenerateRegister.cs";
 
-    public static List<Type> exportTypeList;
+    public static HashSet<Type> ExportTypeSet { get; private set; }
 
     public static void OnBegin()
     {
@@ -98,7 +99,7 @@ public class CSGenerateRegister
         }
         else
         {
-            if (type == typeof (Object))
+            if (type == typeof(Object))
                 name = "UE" + type.Name;
             else
                 name = type.Name;
@@ -199,8 +200,8 @@ public class CSGenerateRegister
                     string getDelegateFuncitonName = JSDataExchangeEditor.GetMethodArg_DelegateFuncionName(type,
                         field.Name, i, 0);
 
-//                     sb.Append(JSDataExchangeEditor.BuildCallString(type, field, "" /* argList */,
-//                                 features | JSDataExchangeEditor.MemberFeature.Set, getDelegateFuncitonName + "(vc.getJSFunctionValue())"));
+                    //                     sb.Append(JSDataExchangeEditor.BuildCallString(type, field, "" /* argList */,
+                    //                                 features | JSDataExchangeEditor.MemberFeature.Set, getDelegateFuncitonName + "(vc.getJSFunctionValue())"));
 
                     string getDelegate = JSDataExchangeEditor.Build_GetDelegate(getDelegateFuncitonName, field.FieldType);
                     sb.Append(JSDataExchangeEditor.BuildCallString(type, field, "" /* argList */,
@@ -564,10 +565,10 @@ public class CSGenerateRegister
                 // use original method's parameterinfo
                 if (!JSDataExchangeEditor.IsDelegateDerived(ps[i].ParameterType))
                     paramHandlers[i] = JSDataExchangeEditor.Get_ParamHandler(ps[i], i);
-//                if (ps[i].ParameterType.IsGenericParameter)
-//                {
+                //                if (ps[i].ParameterType.IsGenericParameter)
+                //                {
                 //                    paramHandlers[i].getter = "    JSMgr.datax.setTemp(method.GetParameters()[" + i.ToString() + "].ParameterType);\n" + paramHandlers[i].getter;
-//                }
+                //                }
             }
         }
 
@@ -791,10 +792,10 @@ static bool {0}(JSVCall vc, int argc)
         }*/
 
         // increase index if adding default constructor
-//         int deltaIndex = 0;
-        if (JSBindingSettings.NeedGenDefaultConstructor(type))
+        //         int deltaIndex = 0;
+        if (JSBCodeGenSettings.NeedGenDefaultConstructor(type))
         {
-//             deltaIndex = 1;
+            //             deltaIndex = 1;
         }
 
         for (int i = 0; i < constructors.Length; i++)
@@ -957,7 +958,7 @@ static bool {0}(JSVCall vc, int argc)
             }
 
             int olIndex = olInfo[i];
-            bool returnVoid = method.ReturnType == typeof (void);
+            bool returnVoid = method.ReturnType == typeof(void);
 
             string functionName = type.Name + "_" + method.Name + (olIndex > 0 ? olIndex.ToString() : "") +
                                   (method.IsStatic ? "_S" : "");
@@ -980,7 +981,7 @@ static bool {0}(JSVCall vc, int argc)
             {
                 sb.AppendFormat(fmt, functionName, "    UnityEngineManual." + functionName + "(vc, argc);");
             }
-            else if (!JSBindingSettings.IsSupportByDotNet2SubSet(functionName))
+            else if (!JSBCodeGenSettings.IsSupportByDotNet2SubSet(functionName))
             {
                 sb.AppendFormat(fmt, functionName,
                     "    UnityEngine.Debug.LogError(\"This method is not supported by .Net 2.0 subset.\");");
@@ -1096,10 +1097,10 @@ public static void __Register()
     public static void GenerateRegisterAll()
     {
         var sbA = new StringBuilder();
-        for (int i = 0; i < exportTypeList.Count; i++)
+        foreach (Type type in ExportTypeSet)
         {
             sbA.AppendFormat("        {0}.__Register();\n",
-                JSNameMgr.GetTypeFileName(exportTypeList[i]));
+                JSNameMgr.GetTypeFileName(type));
         }
         var sb = new StringBuilder();
         sb.AppendFormat(REGISTER_HEADER, sbA);
@@ -1214,99 +1215,126 @@ public class {0}
         sb.Replace("'", "\"");
     }
 
-    public static bool CheckClassBindings()
+    public static HashSet<Type> GetExportTypeSet()
+    {
+        var typeList = new HashSet<Type>();
+        var whitList = JSBCodeGenSettings.TypeWhiteSet;
+        var blackList = JSBCodeGenSettings.TypeBlackSet;
+        //Filter Custom Assembly Type
+        foreach (var assemblyInfo in JSBCodeGenSettings.CustomAssemblyConfig)
+        {
+            try
+            {
+                var assembly = Assembly.Load(assemblyInfo.Key);
+                var namespaces = assemblyInfo.Value;
+                var types = assembly.GetExportedTypes();
+                foreach (var type in types)
+                {
+                    //不导出dll中的接口类型
+                    if (type.IsInterface)
+                        continue;
+                    if (type.IsGenericType && !type.IsGenericTypeDefinition)
+                        continue;
+                    if (namespaces != null)
+                    {
+                        //判断该类型是否到指定Namespace列表中
+                        if (!namespaces.Contains(type.Namespace))
+                            continue;
+
+                        if (FilterType(type, whitList, blackList))
+                            typeList.Add(type);
+                    }
+                    else
+                    {
+                        if (FilterType(type, whitList, blackList))
+                            typeList.Add(type);
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError(e.Message);
+            }
+        }
+
+        foreach (var type in JSBCodeGenSettings.CustomTypeConfig)
+        {
+            if (typeList.Contains(type))
+            {
+                Debug.LogError(string.Format("<{0}> is already existed", type));
+            }
+            else
+            {
+                if (FilterType(type, whitList, blackList))
+                    typeList.Add(type);
+            }
+        }
+        return typeList;
+    }
+
+    /// <summary>
+    /// 返回true，代表导出此类型
+    /// </summary>
+    /// <param name="type"></param>
+    /// <param name="whiteList"></param>
+    /// <param name="blackList"></param>
+    /// <returns></returns>
+    public static bool FilterType(Type type, HashSet<Type> whiteList, List<string> blackList)
+    {
+        if (whiteList != null && whiteList.Contains(type))
+            return true;
+        else
+        {
+            string fullName = type.FullName;
+            if (blackList.Any(s => fullName.Contains(s)))
+                return false;
+
+            //不能导出Enum类型
+            if (type.IsEnum)
+            {
+                return false;
+            }
+            //不能导出Delegate类型
+            if (typeof(Delegate).IsAssignableFrom(type))
+            {
+                return false;
+            }
+            //不能导出Attribute类型
+            if (typeof(Attribute).IsAssignableFrom(type))
+            {
+                return false;
+            }
+            //不能导出带有JsType属性的类型
+            if (JSSerializerEditor.WillTypeBeTranslatedToJavaScript(type))
+            {
+                return false;
+            }
+            //不能导出具体的泛型类，如List<string>,只能导出List<>
+            if (type.IsGenericType && !type.IsGenericTypeDefinition)
+            {
+                return false;
+            }
+
+            return true;
+        }
+    }
+
+    public static void CheckClassBindings()
     {
         var clrLibrary = new HashSet<Type>
         {
             //
             // these types are defined in clrlibrary.javascript
             //
-            typeof (object),
+            typeof (System.Object),
             typeof (Exception),
             typeof (SystemException),
             typeof (ValueType)
         };
 
-        var exportTypeSet = new HashSet<Type>();
+        var exportTypeSet = GetExportTypeSet();
         var logBuilder = new StringBuilder();
-        bool checkSuccess = true;
-
-        var delegateType = typeof (Delegate);
-        //验证JSBindingSettings.classes导出列表的正确性
-        foreach (var type in JSBindingSettings.classes)
-        {
-            //不能导出Delegate类型
-            if (delegateType.IsAssignableFrom(type))
-            {
-                logBuilder.AppendFormat("\"{0}\" Delegate can not be exported.\n",
-                    JSNameMgr.GetTypeFullName(type));
-                checkSuccess = false;
-            }
-            //不能导出带有JsType属性的类型
-            if (JSSerializerEditor.WillTypeBeTranslatedToJavaScript(type))
-            {
-                logBuilder.AppendFormat(
-                    "\"{0}\" has JsType attribute, it can not be in JSBindingSettings.classes at the same time.\n",
-                    JSNameMgr.GetTypeFullName(type));
-                checkSuccess = false;
-            }
-            //不能导出具体的泛型类，如List<string>,只能导出List<>
-            if (type.IsGenericType && !type.IsGenericTypeDefinition)
-            {
-                logBuilder.AppendFormat(
-                    "\"{0}\" is not allowed. Try \"{1}\".\n",
-                    JSNameMgr.GetTypeFullName(type), JSNameMgr.GetTypeFullName(type.GetGenericTypeDefinition()));
-                checkSuccess = false;
-            }
-            //检查JSBindingSettings.classes导出列表是否存在相同的导出类型
-            if (exportTypeSet.Contains(type))
-            {
-                logBuilder.AppendFormat(
-                    "Operation fail. There are more than 1 \"{0}\" in JSBindingSettings.classes, please check.\n",
-                    JSNameMgr.GetTypeFullName(type));
-                checkSuccess = false;
-            }
-            else
-            {
-                exportTypeSet.Add(type);
-            }
-        }
-
-        //将需要导出的dll里所有类型加入原始列表当中
-        foreach (var assemblyItem in JSBindingSettings.customAssembly)
-        {
-            var assembly = Assembly.Load(assemblyItem.Key);
-            var exportNsSet = new HashSet<string>(assemblyItem.Value.Split('|'));
-            var types = assembly.GetExportedTypes();
-            foreach (var type in types)
-            {
-                if (type.Namespace != null && !exportNsSet.Contains(type.Namespace))
-                    continue;
-                if (type.IsInterface)
-                    continue;
-                if (type.IsEnum)
-                    continue;
-                ;
-                if (delegateType.IsAssignableFrom(type))
-                    continue;
-                if (type.IsGenericType && !type.IsGenericTypeDefinition)
-                    continue;
-
-                exportTypeSet.Add(type);
-
-                var baseType = type.BaseType;
-                if (baseType != null)
-                {
-                    if (baseType.IsGenericType) baseType = baseType.GetGenericTypeDefinition();
-                    // System.Object is already defined in SharpKit clrlibrary
-                    if (!clrLibrary.Contains(baseType))
-                    {
-                        exportTypeSet.Add(baseType);
-                    }
-                }
-            }
-        }
-
+        var missingTypeSet = new HashSet<Type>();
         // Is BaseType exported?
         //检查是否有导出父类
         foreach (var type in exportTypeSet)
@@ -1317,52 +1345,48 @@ public class {0}
             // System.Object is already defined in SharpKit clrlibrary
             if (!clrLibrary.Contains(baseType) && !exportTypeSet.Contains(baseType))
             {
-                logBuilder.AppendFormat("\"{0}\"\'s base type \"{1}\" must also be in JSBindingSettings.classes.\n",
-                    JSNameMgr.GetTypeFullName(type),
-                    JSNameMgr.GetTypeFullName(baseType));
-                checkSuccess = false;
+                logBuilder.AppendFormat("\"{0}\"\'s base type \"{1}\" must also be exported.\n",
+                    type, baseType);
+                missingTypeSet.Add(baseType);
             }
 
             // 检查 interface 有没有配置		
             var interfaces = type.GetInterfaces();
             for (int i = 0; i < interfaces.Length; i++)
             {
-                var ti = interfaces[i];
-
-                string tiFullName = JSNameMgr.GetTypeFullName(ti);
-
-                // 这个检查有点奇葩
-                // 有些接口带 <>，这里直接忽略，不检查他
-                if (!tiFullName.Contains("<") && tiFullName.Contains(">") &&
-                    !clrLibrary.Contains(ti) && !exportTypeSet.Contains(ti))
+                var iType = interfaces[i];
+                if (iType.IsPublic || iType.IsNestedPublic)
                 {
-                    logBuilder.AppendFormat("\"{0}\"\'s interface \"{1}\" must also be in JSBindingSettings.classes.\n",
-                        JSNameMgr.GetTypeFullName(type),
-                        JSNameMgr.GetTypeFullName(ti));
-                    checkSuccess = false;
+                    string tiFullName = JSNameMgr.GetTypeFullName(iType);
+
+                    // 这个检查有点奇葩
+                    // 有些接口带 <>，这里直接忽略，不检查他
+                    if (tiFullName.Contains("<") || tiFullName.Contains(">"))
+                        continue;
+
+                    if (!clrLibrary.Contains(iType) && !exportTypeSet.Contains(iType))
+                    {
+                        logBuilder.AppendFormat("\"{0}\"\'s interface \"{1}\" must also be exported.\n",
+                            type, iType);
+                        missingTypeSet.Add(iType);
+                    }
                 }
             }
         }
-        if (!checkSuccess)
-        {
-            Debug.LogError(logBuilder);
-            exportTypeList = null;
-        }
-        else
-        {
-            exportTypeList = new List<Type>(exportTypeSet);
-        }
-        return checkSuccess;
+
+        Debug.LogError(logBuilder);
+        exportTypeSet.UnionWith(missingTypeSet);
+        ExportTypeSet = exportTypeSet;
     }
 
     public static void GenerateClassBindings()
     {
         OnBegin();
 
-        for (int i = 0; i < exportTypeList.Count; i++)
+        foreach (Type type in ExportTypeSet)
         {
             Clear();
-            cachedType = exportTypeList[i];
+            cachedType = type;
             GenerateClass();
         }
         GenerateRegisterAll();
@@ -1420,10 +1444,7 @@ public class {0}
             return;
         }
 
-
-        if (!CheckClassBindings())
-            return;
-
+        CheckClassBindings();
 
         bool bContinue;
         bContinue = EditorUtility.DisplayDialog("TIP",
@@ -1444,7 +1465,7 @@ public class {0}
         JSGenerator.GenerateClassBindings();
         UnityEngineManual.afterUse();
 
-        Debug.Log(string.Format("<color={1}>Generate CS Bindings OK. total = {0}</color>", exportTypeList.Count,
+        Debug.Log(string.Format("<color={1}>Generate CS Bindings OK. total = {0}</color>", ExportTypeSet.Count,
             "orange"));
         AssetDatabase.Refresh();
     }

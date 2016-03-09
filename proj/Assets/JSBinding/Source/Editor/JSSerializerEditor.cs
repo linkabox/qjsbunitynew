@@ -450,12 +450,7 @@ public static class JSSerializerEditor
     /// <returns></returns>
     public static bool WillTypeBeExportedToJavaScript(Type type)
     {
-        foreach (var t in JSBindingSettings.classes)
-        {
-            if (t == type)
-                return true;
-        }
-        return false;
+        return CSGenerator.ExportTypeSet.Contains(type);
     }
     /// <summary>
     /// Replace MonoBehaviour with JSComponent, only when this MonoBehaviour has JsType attribute
