@@ -231,14 +231,13 @@ public class JSDataExchangeEditor : JSDataExchangeMgr
     public static string Build_GetDelegate(string getDelegateFunctionName, Type delType)
     {
         return new StringBuilder()
-            .AppendFormat("JSDataExchangeMgr.GetJSArg<{0}>(()=>[[\n", JSNameMgr.GetTypeFullName(delType))
-            .AppendFormat("    if (JSApi.isFunctionS((int)JSApi.GetType.Arg))\n")
-            .AppendFormat("        return {0}(JSApi.getFunctionS((int)JSApi.GetType.Arg));\n", getDelegateFunctionName)
-            .Append("    else\n")
-            .AppendFormat("        return ({0})JSMgr.datax.getObject((int)JSApi.GetType.Arg);\n",
+            .AppendFormat("JSDataExchangeMgr.GetJSArg<{0}>(()=>\n        [[\n", JSNameMgr.GetTypeFullName(delType))
+            .AppendFormat("        if (JSApi.isFunctionS((int)JSApi.GetType.Arg))\n")
+            .AppendFormat("            return {0}(JSApi.getFunctionS((int)JSApi.GetType.Arg));\n", getDelegateFunctionName)
+            .Append("        else\n")
+            .AppendFormat("            return ({0})JSMgr.datax.getObject((int)JSApi.GetType.Arg);\n",
                 JSNameMgr.GetTypeFullName(delType))
-            .Append("]])\n")
-            .ToString();
+            .Append("        ]])").ToString();
     }
 
     public static StringBuilder Build_DelegateFunction(Type classType, MemberInfo memberInfo, Type delType,

@@ -3,7 +3,7 @@ using System.Collections;
 
 public class PerTest
 {
-    public event System.Action OnEventFinish;
+    public event System.Action<MonoBehaviour> OnEventFinish;
     public static event System.Action OnStaticEventFinish;
     public System.Action OnDelegateFinish;
     public static System.Action OnStaticDelegateFinish;
@@ -11,17 +11,25 @@ public class PerTest
     public static int StaticID { get; set; }
     public int ID { get; set; }
 
-    public void AddEvent(System.Action action)
+    public void AddEvent(System.Action<MonoBehaviour> action)
     {
         OnEventFinish += action;
     }
+
+    public void RemoveEvent(System.Action<MonoBehaviour> action)
+    {
+        OnEventFinish -= action;
+    }
     public void SendEvent()
+    {
+        if (OnEventFinish != null)
+            OnEventFinish(null);
+    }
+
+    public static void SendStaticEvent()
     {
         if (OnStaticEventFinish != null)
             OnStaticEventFinish();
-
-        if (OnEventFinish != null)
-            OnEventFinish();
     }
 
     public bool toggle;

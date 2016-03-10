@@ -50,9 +50,9 @@ public static class GeneratorHelp
     public static int AddTypeInfo(Type type, out ATypeInfo tiOut)
     {
         ATypeInfo ti = new ATypeInfo();
-        ti.fields = type.GetFields(JSMgr.BindingFlagsField);
-        ti.properties = type.GetProperties(JSMgr.BindingFlagsProperty);
-        ti.methods = type.GetMethods(JSMgr.BindingFlagsMethod);
+        ti.fields = type.GetFields(BindingFlagsField);
+        ti.properties = type.GetProperties(BindingFlagsProperty);
+        ti.methods = type.GetMethods(BindingFlagsMethod);
         ti.constructors = type.GetConstructors();
         if (JSBCodeGenSettings.NeedGenDefaultConstructor(type))
         {
@@ -73,10 +73,10 @@ public static class GeneratorHelp
     }
     public static bool IsMemberObsolete(MemberInfo mi)
     {
-        object[] attrs = mi.GetCustomAttributes(true);
+        var attrs = mi.GetCustomAttributes(true);
         for (int j = 0; j < attrs.Length; j++)
         {
-            if (attrs[j].GetType() == typeof(System.ObsoleteAttribute))
+            if (attrs[j] is ObsoleteAttribute)
             {
                 return true;
             }
@@ -93,7 +93,7 @@ public static class GeneratorHelp
         if (m1.IsStatic && !m2.IsStatic)
             return 1;
         if (m1.Name != m2.Name)
-            return string.Compare(m1.Name, m2.Name);
+            return String.Compare(m1.Name, m2.Name);
         int max1 = 0;
         {
             ParameterInfo[] ps = m1.GetParameters();
@@ -153,7 +153,7 @@ public static class GeneratorHelp
         List<ConstructorInfoAndIndex> lstCons = new List<ConstructorInfoAndIndex>();
         List<FieldInfoAndIndex> lstField = new List<FieldInfoAndIndex>();
         List<PropertyInfoAndIndex> lstPro = new List<PropertyInfoAndIndex>();
-        Dictionary<string, int> proAccessors = new Dictionary<string, int>();
+        HashSet<string> pMethodNameSet = new HashSet<string>();
         List<MethodInfoAndIndex> lstMethod = new List<MethodInfoAndIndex>();
 
         for (int i = 0; i < ti.constructors.Length; i++)
@@ -168,7 +168,7 @@ public static class GeneratorHelp
             }
 
             // don't generate MonoBehaviour constructor
-            if (type == typeof(UnityEngine.MonoBehaviour))
+            if (type == typeof(MonoBehaviour))
             {
                 continue;
             }
@@ -181,7 +181,7 @@ public static class GeneratorHelp
 
         for (int i = 0; i < ti.fields.Length; i++)
         {
-            if (typeof(System.Delegate).IsAssignableFrom(ti.fields[i].FieldType.BaseType))
+            if (typeof(Delegate).IsAssignableFrom(ti.fields[i].FieldType.BaseType))
             {
                 //Debug.Log("[field]" + type.ToString() + "." + ti.fields[i].Name + "is delegate!");
             }
@@ -199,7 +199,7 @@ public static class GeneratorHelp
         {
             PropertyInfo pro = ti.properties[i];
 
-            if (typeof(System.Delegate).IsAssignableFrom(pro.PropertyType.BaseType))
+            if (typeof(Delegate).IsAssignableFrom(pro.PropertyType.BaseType))
             {
                 // Debug.Log("[property]" + type.ToString() + "." + pro.Name + "is delegate!");
             }
@@ -207,8 +207,8 @@ public static class GeneratorHelp
             MethodInfo[] accessors = pro.GetAccessors();
             foreach (var v in accessors)
             {
-                if (!proAccessors.ContainsKey(v.Name))
-                    proAccessors.Add(v.Name, 0);
+                if (!pMethodNameSet.Contains(v.Name))
+                    pMethodNameSet.Add(v.Name);
             }
 
 
@@ -235,14 +235,12 @@ public static class GeneratorHelp
             // skip non-static method in static class
             if (bIsStaticClass && !method.IsStatic)
             {
-                // NGUITools
-                //Debug.Log("........."+type.Name+"."+method.Name);
                 continue;
             }
 
             // skip property accessor
             if (method.IsSpecialName &&
-                proAccessors.ContainsKey(method.Name))
+                pMethodNameSet.Contains(method.Name))
             {
                 continue;
             }
@@ -269,6 +267,10 @@ public static class GeneratorHelp
                         Debug.Log("IGNORE not-static special-name function: " + type.Name + "." + method.Name);
                         continue;
                     }
+                }
+                else if(method.Name.StartsWith("add_") || method.Name.StartsWith("remove_"))
+                {
+                    
                 }
                 else
                 {
@@ -437,10 +439,10 @@ public static class GeneratorHelp
     /// <returns></returns>
     public static bool MethodIsOverloaded(Type type, string methodName)
     {
-        bool ret = MethodIsOverloaded2(type, methodName, JSMgr.BindingFlagsMethod2);
+        bool ret = MethodIsOverloaded2(type, methodName, BindingFlagsMethod2);
         if (!ret)
         {
-            if (MethodIsOverloaded2(type, methodName, JSMgr.BindingFlagsMethod3))
+            if (MethodIsOverloaded2(type, methodName, BindingFlagsMethod3))
             {
                 ret = true;
                 Debug.Log("NEW OVERLOAD " + type.Name + "." + methodName);
@@ -464,4 +466,37 @@ public static class GeneratorHelp
         return false;
     }
 
+    public static BindingFlags BindingFlagsMethod = 
+        BindingFlags.Public 
+        | BindingFlags.Instance 
+        | BindingFlags.Static 
+        | BindingFlags.DeclaredOnly;
+
+    public static BindingFlags BindingFlagsMethod2 =
+        BindingFlags.Public
+        | BindingFlags.NonPublic
+        | BindingFlags.Instance
+        | BindingFlags.Static;
+
+    public static BindingFlags BindingFlagsMethod3 =
+        BindingFlags.Public
+        | BindingFlags.NonPublic
+        | BindingFlags.Static
+        | BindingFlags.FlattenHierarchy;
+
+    public static BindingFlags BindingFlagsProperty = 
+        BindingFlags.Public 
+        | BindingFlags.GetProperty 
+        | BindingFlags.SetProperty 
+        | BindingFlags.Instance 
+        | BindingFlags.Static 
+        | BindingFlags.DeclaredOnly;
+
+    public static BindingFlags BindingFlagsField = 
+        BindingFlags.Public 
+        | BindingFlags.GetField 
+        | BindingFlags.SetField 
+        | BindingFlags.Instance 
+        | BindingFlags.Static 
+        | BindingFlags.DeclaredOnly;
 }

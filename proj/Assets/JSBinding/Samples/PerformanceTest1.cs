@@ -127,35 +127,63 @@ public class PerformanceTest1 : MonoBehaviour {
 
     void TestActioCallback()
     {
+        PerTest obj = new PerTest();
+
+        //Delegate Test
         PerTest.OnStaticDelegateFinish = () =>
         {
             Debug.LogError("PerTest OnStaticUpdate");
         };
-        PerTest.OnStaticEventFinish += () =>
-        {
-            Debug.LogError("PerTest OnStaticFinish");
-        };
-        PerTest obj = new PerTest();
-        obj.OnDelegateFinish += () =>
-        {
-            Debug.LogError("PerTest OnUpdate 1");
-        };
-        obj.OnDelegateFinish += () =>
-        {
-            Debug.LogError("PerTest OnUpdate 2");
-        };
-        obj.OnEventFinish += () =>
-        {
-            Debug.LogError("PerTest OnFinish 1");
-        };
-        obj.OnEventFinish += () =>
-        {
-            Debug.LogError("PerTest OnFinish 2");
-        };
-        obj.OnDelegateFinish();
         PerTest.OnStaticDelegateFinish();
+
+        obj.OnDelegateFinish += OnPerTestDelegateFinish;
+        obj.OnDelegateFinish();
+        obj.OnDelegateFinish -= OnPerTestDelegateFinish;
+        if(obj.OnDelegateFinish == null)
+            Debug.LogError("====Remove OnPerTestDelegateFinish====");
+
+        //Static Event Test
+        PerTest.OnStaticEventFinish += OnPerTestStaticEventFinish;
+        PerTest.SendStaticEvent();
+        Debug.LogError("====Remove OnPerTestStaticEventFinish====");
+        PerTest.OnStaticEventFinish -= OnPerTestStaticEventFinish;
+        PerTest.SendStaticEvent();
+
+        //Instance Event Test
+        Debug.LogError("====Test AddEvent====");
+        System.Action<MonoBehaviour> action = (mono) =>
+        {
+            Debug.LogError("PerTest AddEvent");
+        };
+        obj.AddEvent(action);
+        obj.SendEvent();
+        Debug.LogError("====Remove AddEvent====");
+        obj.RemoveEvent(action);
+        obj.SendEvent();
+
+        Debug.LogError("====Test OnPerTestEventFinish====");
+        obj.OnEventFinish += OnPerTestEventFinish;
+        obj.SendEvent();
+        Debug.LogError("====Remove OnPerTestEventFinish====");
+        obj.OnEventFinish -= OnPerTestEventFinish;
         obj.SendEvent();
     }
+
+    public void OnPerTestDelegateFinish()
+    {
+        Debug.LogError("PerTest OnPerTestDelegateFinish");
+    }
+
+    public void OnPerTestEventFinish(MonoBehaviour mono)
+    {
+        Debug.LogError("PerTest OnPerTestEventFinish");
+    }
+
+    public void OnPerTestStaticEventFinish()
+    {
+        Debug.LogError("PerTest OnPerTestStaticEventFinish");
+    }
+
     public void OnChangeEvent()
     {
 

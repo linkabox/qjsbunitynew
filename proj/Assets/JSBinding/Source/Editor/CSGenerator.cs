@@ -464,6 +464,63 @@ public class CSGenerateRegister
         return sb;
     }
 
+    public static StringBuilder BuildEventFunctionCall(
+        int methodTag,
+        ParameterInfo[] ps,
+        string methodName,
+        bool bStatic,
+        bool bAdd)
+    {
+        var sb = new StringBuilder();
+
+        sb.AppendFormat("    int len = argc;\n");
+
+        var sbGetParam = new StringBuilder();
+        var sbActualParam = new StringBuilder();
+
+        if (ps.Length > 0)
+        {
+            var p = ps[0];
+            string delegateGetName = JSDataExchangeEditor.GetMethodArg_DelegateFuncionName(cachedType,
+                methodName, methodTag, 0);
+
+            sbGetParam.AppendFormat("        {0} action = {1};\n",
+                JSNameMgr.GetTypeFullName(p.ParameterType), // [0]
+                JSDataExchangeEditor.Build_GetDelegate(delegateGetName, p.ParameterType) // [1]
+                );
+
+            sbActualParam.Append("action");
+        }
+
+        /*
+         * 0 parameters count
+         * 1 class name
+         * 2 function name
+         * 3 actual parameters
+         */
+        var sbCall = new StringBuilder();
+        string opStr = bAdd ? "+=" : "-=";
+        string eventName = bAdd ? methodName.Replace("add_", "") : methodName.Replace("remove_", "");
+        if (bStatic)
+        {
+            sbCall.AppendFormat("{0}.{1} {2} {3};", JSNameMgr.GetTypeFullName(cachedType),
+                eventName, opStr, sbActualParam);
+        }
+        else
+        {
+            sbCall.AppendFormat("(({0})vc.csObj).{1} {2} {3};", JSNameMgr.GetTypeFullName(cachedType),
+                eventName, opStr, sbActualParam);
+        }
+
+        sb.Append("    if (len == 1) \n");
+        sb.Append("    [[\n");
+        sb.Append(sbGetParam);
+        sb.Append("        ").Append(sbCall).Append("\n");
+        sb.Append("    ]]\n");
+
+        return sb;
+    }
+
     public static StringBuilder BuildNormalFunctionCall(
         int methodTag,
         ParameterInfo[] ps,
@@ -988,13 +1045,31 @@ static bool {0}(JSVCall vc, int argc)
             }
             else
             {
-                sb.AppendFormat(fmt, functionName,
-                    method.IsSpecialName
-                        ? BuildSpecialFunctionCall(paramS, type.Name, method.Name, method.IsStatic, returnVoid,
-                            method.ReturnType)
-                        : BuildNormalFunctionCall(i, paramS, method.Name, method.IsStatic, method.ReturnType,
-                            false /* is constructor */,
-                            TCount));
+                bool isSpecialFunc = method.IsSpecialName;
+                StringBuilder sbFuncBlock = null;
+                if (isSpecialFunc)
+                {
+                    bool isEventMethod = method.Name.StartsWith("add_") || method.Name.StartsWith("remove_");
+                    if (isEventMethod)
+                    {
+                        bool addEvent = method.Name.StartsWith("add_");
+                        sbFuncBlock = BuildEventFunctionCall(i, paramS, method.Name, method.IsStatic, addEvent);
+                    }
+                    else
+                    {
+                        sbFuncBlock = BuildSpecialFunctionCall(paramS, type.Name, method.Name, method.IsStatic, returnVoid,
+                            method.ReturnType);
+                    }
+                }
+                else
+                {
+                    sbFuncBlock = BuildNormalFunctionCall(i, paramS, method.Name,
+                        method.IsStatic,
+                        method.ReturnType,
+                        false,
+                        TCount);
+                }
+                sb.AppendFormat(fmt, functionName, sbFuncBlock);
             }
 
             ccbn.methods.Add(functionName);
@@ -1374,7 +1449,8 @@ public class {0}
             }
         }
 
-        Debug.LogError(logBuilder);
+        if(logBuilder.Length > 0)
+            Debug.LogError(logBuilder);
         exportTypeSet.UnionWith(missingTypeSet);
         ExportTypeSet = exportTypeSet;
     }
