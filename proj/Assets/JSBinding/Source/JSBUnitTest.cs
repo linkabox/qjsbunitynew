@@ -3,8 +3,23 @@ using System.Collections;
 
 public class PerTest
 {
-    public event System.Action OnFinish;
-    public System.Action OnUpdate;
+    public event System.Action OnEventFinish;
+    public static event System.Action OnStaticEventFinish;
+    public System.Action OnDelegateFinish;
+    public static System.Action OnStaticDelegateFinish;
+
+    public static int StaticID { get; set; }
+    public int ID { get; set; }
+
+    public void SendFinishEvent()
+    {
+        if (OnStaticEventFinish != null)
+            OnStaticEventFinish();
+
+        if (OnEventFinish != null)
+            OnEventFinish();
+    }
+
     public bool toggle;
     public PerTest()
     {

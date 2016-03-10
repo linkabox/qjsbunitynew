@@ -8,7 +8,8 @@ public class PerformanceTest1 : MonoBehaviour {
     Transform mTransform;
 	void Start () {
         mTransform = transform;
-	}
+        TestActioCallback();
+    }
     void Test0()
     {
         var N = 10000000;
@@ -122,6 +123,38 @@ public class PerformanceTest1 : MonoBehaviour {
         sw.Stop();
 
         Debug.Log("test7 time: " + sw.ElapsedMilliseconds + " ms");
+    }
+
+    void TestActioCallback()
+    {
+        PerTest.OnStaticUpdate = () =>
+        {
+            Debug.LogError("PerTest OnStaticUpdate");
+        };
+        PerTest.OnStaticFinish += () =>
+        {
+            Debug.LogError("PerTest OnStaticFinish");
+        };
+        PerTest obj = new PerTest();
+        obj.OnUpdate += () =>
+        {
+            Debug.LogError("PerTest OnUpdate 1");
+        };
+        obj.OnUpdate += () =>
+        {
+            Debug.LogError("PerTest OnUpdate 2");
+        };
+        obj.OnFinish += () =>
+        {
+            Debug.LogError("PerTest OnFinish 1");
+        };
+        obj.OnFinish += () =>
+        {
+            Debug.LogError("PerTest OnFinish 2");
+        };
+        obj.OnUpdate();
+        PerTest.OnStaticUpdate();
+        obj.SendFinishEvent();
     }
     public void OnChangeEvent()
     {
