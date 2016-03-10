@@ -598,6 +598,17 @@ public static class JSMgr
     }
     static Dictionary<int, JS_CS_FunRel> mDictJSFun1 = new Dictionary<int, JS_CS_FunRel>(); // key = FUNCTION ID, Value = JS_CS_FunRel(Delegate, Delegate.GetHashCode())
     static Dictionary<int, int> mDictJSFun2 = new Dictionary<int,int>(); // key = Delegate.GetHashCode(), Value = FUNCTIONID
+
+    public static T getJSFunCSDelegateRel<T>(int funID)
+    {
+        JS_CS_FunRel rel = null;
+        if (mDictJSFun1.TryGetValue(funID,out rel))
+        {
+            if(rel.wr.IsAlive)
+                return (T) rel.wr.Target;
+        }
+        return default(T);
+    }
     public static void addJSFunCSDelegateRel(int funID, Delegate del)
     {
         if (!mDictJSFun1.ContainsKey(funID))

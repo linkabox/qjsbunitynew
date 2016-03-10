@@ -280,18 +280,21 @@ public class JSDataExchangeEditor : JSDataExchangeMgr
         sb.Append("    if (objFunction == null || objFunction.jsObjID == 0)\n");
         sb.Append("    [[\n        return null;\n    ]]\n");
 
-        sb.AppendFormat("    {0} action = ({1}) => \n", JSNameMgr.GetTypeFullName(delType, true),
+        sb.AppendFormat("    var action = JSMgr.getJSFunCSDelegateRel<{0}>(objFunction.jsObjID);\n", JSNameMgr.GetTypeFullName(delType, true));
+        sb.Append("    if (action == null)\n    [[\n");
+        sb.AppendFormat("        action = ({1}) => \n", JSNameMgr.GetTypeFullName(delType, true),
             argsParam.Format(args.ArgsFormat.OnlyList));
-        sb.AppendFormat("    [[\n");
-        sb.AppendFormat("        JSMgr.vCall.CallJSFunctionValue(0, objFunction.jsObjID{0}{1});\n",
+        sb.AppendFormat("        [[\n");
+        sb.AppendFormat("            JSMgr.vCall.CallJSFunctionValue(0, objFunction.jsObjID{0}{1});\n",
             argsParam.Count > 0 ? ", " : "", argsParam);
 
         if (returnType != typeof (void))
-            sb.Append("        return (" + JSNameMgr.GetTypeFullName(returnType) + ")" + Get_GetJSReturn(returnType) +
+            sb.Append("            return (" + JSNameMgr.GetTypeFullName(returnType) + ")" + Get_GetJSReturn(returnType) +
                       ";\n");
 
-        sb.AppendFormat("    ]];\n");
-        sb.Append("    JSMgr.addJSFunCSDelegateRel(objFunction.jsObjID, action);\n");
+        sb.AppendFormat("        ]];\n");
+        sb.Append("        JSMgr.addJSFunCSDelegateRel(objFunction.jsObjID, action);\n");
+        sb.Append("    ]]\n");
         sb.Append("    return action;\n");
         sb.AppendFormat("]]\n");
 
