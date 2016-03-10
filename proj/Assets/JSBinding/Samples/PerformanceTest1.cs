@@ -127,34 +127,34 @@ public class PerformanceTest1 : MonoBehaviour {
 
     void TestActioCallback()
     {
-        PerTest.OnStaticUpdate = () =>
+        PerTest.OnStaticDelegateFinish = () =>
         {
             Debug.LogError("PerTest OnStaticUpdate");
         };
-        PerTest.OnStaticFinish += () =>
+        PerTest.OnStaticEventFinish += () =>
         {
             Debug.LogError("PerTest OnStaticFinish");
         };
         PerTest obj = new PerTest();
-        obj.OnUpdate += () =>
+        obj.OnDelegateFinish += () =>
         {
             Debug.LogError("PerTest OnUpdate 1");
         };
-        obj.OnUpdate += () =>
+        obj.OnDelegateFinish += () =>
         {
             Debug.LogError("PerTest OnUpdate 2");
         };
-        obj.OnFinish += () =>
+        obj.OnEventFinish += () =>
         {
             Debug.LogError("PerTest OnFinish 1");
         };
-        obj.OnFinish += () =>
+        obj.OnEventFinish += () =>
         {
             Debug.LogError("PerTest OnFinish 2");
         };
-        obj.OnUpdate();
-        PerTest.OnStaticUpdate();
-        obj.SendFinishEvent();
+        obj.OnDelegateFinish();
+        PerTest.OnStaticDelegateFinish();
+        obj.SendEvent();
     }
     public void OnChangeEvent()
     {
