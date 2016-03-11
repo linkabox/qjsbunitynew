@@ -1,4 +1,5 @@
-﻿using System;
+﻿#define USE_SHELL
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -115,27 +116,40 @@ public class Compiler
 #endif
         var processInfo = new ProcessStartInfo
         {
+#if USE_SHELL
+			CreateNoWindow = true,
+			UseShellExecute = true,
+			RedirectStandardOutput = false,
+			RedirectStandardError = false,
+			FileName = exePath,
+			Arguments = arguments
+#else
             CreateNoWindow = true,
             UseShellExecute = false,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             FileName = exePath,
             Arguments = arguments
+#endif
         };
 
         var process = Process.Start(processInfo);
+#if !USE_SHELL
         string outputLog = process.StandardOutput.ReadToEnd();
         string errorLog = process.StandardError.ReadToEnd();
+#endif
         // 等待结束
         process.WaitForExit();
 
-        Debug.LogError(outputLog);
         int exitCode = process.ExitCode;
         if (exitCode != 0)
         {
             EditorUtility.DisplayDialog("SharpKitCompiler", "Compile failed. exit code = " + exitCode, "OK");
+#if !USE_SHELL
+			Debug.LogError(outputLog);
             if (!string.IsNullOrEmpty(errorLog))
                 Debug.LogError(errorLog);
+#endif
             return false;
         }
         EditorUtility.DisplayDialog("SharpKitCompiler", "Compile success.", "OK");
