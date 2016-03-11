@@ -232,10 +232,10 @@ public class JSDataExchangeEditor : JSDataExchangeMgr
     {
         return new StringBuilder()
             .AppendFormat("JSDataExchangeMgr.GetJSArg<{0}>(()=>\n        [[\n", JSNameMgr.GetTypeFullName(delType))
-            .AppendFormat("        if (JSApi.isFunctionS((int)JSApi.GetType.Arg))\n")
-            .AppendFormat("            return {0}(JSApi.getFunctionS((int)JSApi.GetType.Arg));\n", getDelegateFunctionName)
-            .Append("        else\n")
-            .AppendFormat("            return ({0})JSMgr.datax.getObject((int)JSApi.GetType.Arg);\n",
+            .AppendFormat("            if (JSApi.isFunctionS((int)JSApi.GetType.Arg))\n")
+            .AppendFormat("                return {0}(JSApi.getFunctionS((int)JSApi.GetType.Arg));\n", getDelegateFunctionName)
+            .Append("            else\n")
+            .AppendFormat("                return ({0})JSMgr.datax.getObject((int)JSApi.GetType.Arg);\n",
                 JSNameMgr.GetTypeFullName(delType))
             .Append("        ]])").ToString();
     }
