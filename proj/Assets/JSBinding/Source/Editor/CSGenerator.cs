@@ -1340,7 +1340,7 @@ public class {0}
             }
             else
             {
-                if (FilterType(type, whitList, blackList))
+                if (FilterType(type, null, null))
                     typeList.Add(type);
             }
         }
@@ -1360,9 +1360,12 @@ public class {0}
             return true;
         else
         {
-            string fullName = type.FullName;
-            if (blackList.Any(s => fullName.Contains(s)))
-                return false;
+            if (blackList != null)
+            {
+                string fullName = type.FullName;
+                if (blackList.Any(s => fullName.Contains(s)))
+                    return false; 
+            }
 
             //不能导出Enum类型
             if (type.IsEnum)
