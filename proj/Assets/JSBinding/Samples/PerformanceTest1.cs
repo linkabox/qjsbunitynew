@@ -142,6 +142,16 @@ public class PerformanceTest1 : MonoBehaviour {
         if(obj.OnDelegateFinish == null)
             Debug.LogError("====Remove OnPerTestDelegateFinish====");
 
+        System.Action delegateAction = () =>
+        {
+            Debug.LogError("PerTest AddDelegate");
+        };
+        obj.AddDelegate(delegateAction);
+        obj.OnDelegateFinish();
+        obj.RemoveDelegate(delegateAction);
+        if (obj.OnDelegateFinish == null)
+            Debug.LogError("====Remove AddDelegate====");
+
         //Static Event Test
         PerTest.OnStaticEventFinish += OnPerTestStaticEventFinish;
         PerTest.SendStaticEvent();
@@ -151,14 +161,14 @@ public class PerformanceTest1 : MonoBehaviour {
 
         //Instance Event Test
         Debug.LogError("====Test AddEvent====");
-        System.Action<MonoBehaviour> action = (mono) =>
+        System.Action<MonoBehaviour> eventAction = (mono) =>
         {
             Debug.LogError("PerTest AddEvent");
         };
-        obj.AddEvent(action);
+        obj.AddEvent(eventAction);
         obj.SendEvent();
         Debug.LogError("====Remove AddEvent====");
-        obj.RemoveEvent(action);
+        obj.RemoveEvent(eventAction);
         obj.SendEvent();
 
         Debug.LogError("====Test OnPerTestEventFinish====");

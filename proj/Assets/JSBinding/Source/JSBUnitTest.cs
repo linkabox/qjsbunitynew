@@ -11,6 +11,15 @@ public class PerTest
     public static int StaticID { get; set; }
     public int ID { get; set; }
 
+    public void AddDelegate(System.Action action)
+    {
+        OnDelegateFinish += action;
+    }
+
+    public void RemoveDelegate(System.Action action)
+    {
+        OnDelegateFinish -= action;
+    }
     public void AddEvent(System.Action<MonoBehaviour> action)
     {
         OnEventFinish += action;
