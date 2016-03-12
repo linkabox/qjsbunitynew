@@ -4,10 +4,12 @@
 *.userprefs
 Library
 Temp
+Temp.meta
 UnityVS*
 AssetStoreTools*
 obj
 proj/Assets/JSBinding/Generated
+proj/Assets/JSBinding/Generated.meta
 proj/Assets/StreamingAssets/JavaScript/GeneratedFiles.*
 proj/Assets/StreamingAssets/JavaScript/SharpKitGeneratedFiles.*
 proj/Assets/JSBinding/Source/CSGenerateRegister.*
