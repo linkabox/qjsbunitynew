@@ -68,6 +68,9 @@ public class Compiler
         //在这里可以加入自定义宏
         //        if (PlayerSettings.GetScriptingDefineSymbolsForGroup(BuildTargetGroup.Standalone).IndexOf("USEAB") >= 0)
         //            define += ";USEAB";
+#if ENABLE_JSB
+        define += ";ENABLE_JSB";
+#endif
 
         args.AddFormat("/define:{0}", define);
 
