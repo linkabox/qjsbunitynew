@@ -147,12 +147,14 @@ public class JSCache
             {
                 if (isCSMonoBehaviour == null)
                 {
+                    //这里的判断顺序不能变
+                    //Unity Component > MonoBehaviour child > Mono2Js Com > JsTypeAtrribute
                     if (type == null)
-                        isCSMonoBehaviour = false;
-                    else if (!monoBehaviourType.IsAssignableFrom(type))
                         isCSMonoBehaviour = false;
                     else if (type.Namespace != null && type.Namespace == monoBehaviourType.Namespace)
                         isCSMonoBehaviour = true;
+                    else if (!monoBehaviourType.IsAssignableFrom(type))
+                        isCSMonoBehaviour = false;
                     else if (dictMB2JSComName.ContainsKey(JSNameMgr.GetTypeFullName(type, false)))
                         isCSMonoBehaviour = false;
                     // This is useful if source c# file still exists in project
