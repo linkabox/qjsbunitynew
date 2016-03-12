@@ -4,7 +4,7 @@ using System.Collections;
 
 //public static class GameObjectExt
 //{
-//    public static T GetMissingComponent<T>(this GameObject go) where T : Component
+//    public static T GetOrAddComponent<T>(this GameObject go) where T : Component
 //    {
 //        T t = go.GetComponent<T>();
 //        if (t == null)
@@ -24,11 +24,11 @@ public class ComponentTest : MonoBehaviour {
         this.gameObject.AddComponent<SphereCollider>();
         this.gameObject.AddComponent("Animation");
 
-        //this.gameObject.GetMissingComponent<BoxCollider>();
-        //this.gameObject.GetMissingComponent<Animation>();
+        this.gameObject.GetOrAddComponent<BoxCollider>();
+        this.gameObject.GetOrAddComponent<Animation>();
 
-        //GetMissingComponent这类扩展方法只能用于添加C#的组件，否则Unity会Crash掉
-        //this.gameObject.GetMissingComponent<AwakeC>();
+        //GetOrAddComponent这类扩展方法只能用于添加C#的组件，否则Unity会Crash掉
+        //this.gameObject.GetOrAddComponent<AwakeC>();
 
         // 
         //  GetComponent<>()
@@ -45,7 +45,7 @@ public class ComponentTest : MonoBehaviour {
         }
 
         //gameObject.AddComponent<MentosKXT>();
-        gameObject.GetMissingComponent<MentosKXT>();
+        gameObject.GetOrAddComponent<MentosKXT>();
     }
 	
 	// Update is called once per frame

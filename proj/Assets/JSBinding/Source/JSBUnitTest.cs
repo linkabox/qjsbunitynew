@@ -1,18 +1,18 @@
 ﻿using UnityEngine;
 using System.Collections;
 
-public static class GameObjectExt
+public static class GameObjectHelper
 {
 //    [CsExportedMethod(JsCode = @"
 ///* static T  */
-//_jstype.staticDefinition.GetMissingComponent$1 = function(T, go) { 
+//_jstype.staticDefinition.GetOrAddComponent$1 = function(T, go) { 
 //    var t = go.GetComponent$1(T);
 //    if (t == null){
 //        t = go.AddComponent$1(T);
 //    }
 //    return t;
 //}")]
-    public static T GetMissingComponent<T>(this GameObject go) where T : Component
+    public static T GetOrAddComponent<T>(this GameObject go) where T : Component
     {
         T t = go.GetComponent<T>();
         if (t == null)
