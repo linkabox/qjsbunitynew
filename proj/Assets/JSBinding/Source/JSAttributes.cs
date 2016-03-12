@@ -13,3 +13,11 @@ public class JSComponentAttribute : Attribute
 {
     public string Name { get; set; }
 }
+
+[AttributeUsage(AttributeTargets.Assembly | AttributeTargets.Method, AllowMultiple = true)]
+public class CsExportedMethodAttribute : Attribute
+{
+    public Type TargetType { get; set; }
+    public string TargetMethodName { get; set; }
+    public string JsCode { get; set; }
+}

@@ -379,6 +379,24 @@ _jstype.staticDefinition.{1} = function({2}) [[
         {
             var method = methods[i];
 
+            //判断该方法是否有定义CsExportedMethodAttribute属性
+            if (method.IsDefined(typeof (CsExportedMethodAttribute), false))
+            {
+                var objs = method.GetCustomAttributes(typeof (CsExportedMethodAttribute), false);
+                sb.Append(((CsExportedMethodAttribute)objs[0]).JsCode);
+                continue;
+            }
+            else if (CSGenerator.CsExportedMethodDic.ContainsKey(type))
+            {
+                CsExportedMethodAttribute methodAttribute = null;
+                if (CSGenerator.CsExportedMethodDic[type].TryGetValue(method.Name,out methodAttribute))
+                {
+                    sb.Append(methodAttribute.JsCode);
+                    continue;
+                }
+            }
+
+
             bool bOverloaded = (i > 0 && method.Name == methods[i - 1].Name) ||
                                (i < methods.Length - 1 && method.Name == methods[i + 1].Name);
 

@@ -48,9 +48,22 @@ public class CSGenerateRegister
     private static readonly string registerFile = Application.dataPath + "/JSBinding/Source/CSGenerateRegister.cs";
 
     public static HashSet<Type> ExportTypeSet { get; private set; }
+    public static Dictionary<Type,Dictionary<string, CsExportedMethodAttribute>> CsExportedMethodDic { get; private set; }
 
     public static void OnBegin()
     {
+        var eportedMethodAtrs = typeof (CSGenerator).Assembly.GetCustomAttributes(typeof (CsExportedMethodAttribute), false);
+        CsExportedMethodDic = new Dictionary<Type, Dictionary<string, CsExportedMethodAttribute>>();
+        foreach (var obj in eportedMethodAtrs)
+        {
+            var methodAttribute = obj as CsExportedMethodAttribute;
+            if (!CsExportedMethodDic.ContainsKey(methodAttribute.TargetType))
+            {
+                CsExportedMethodDic[methodAttribute.TargetType] = new Dictionary<string, CsExportedMethodAttribute>();
+            }
+            CsExportedMethodDic[methodAttribute.TargetType].Add(methodAttribute.TargetMethodName, methodAttribute);
+        }
+
         GeneratorHelp.ClearTypeInfo();
 
         if (Directory.Exists(JSPathSettings.csGeneratedDir))
@@ -951,9 +964,22 @@ static bool {0}(JSVCall vc, int argc)
 ]]
 ";
         var sb = new StringBuilder();
+        
         for (int i = 0; i < methods.Length; i++)
         {
             var method = methods[i];
+
+            //判断该方法是否有定义CsExportedMethodAttribute属性
+            if (method.IsDefined(typeof(CsExportedMethodAttribute),false))
+                continue;
+            else if(CsExportedMethodDic.ContainsKey(type))
+            {
+                if (CsExportedMethodDic[type].ContainsKey(method.Name))
+                {
+                    continue;
+                }
+            }
+
             var paramS = method.GetParameters();
 
             for (int j = 0; j < paramS.Length; j++)

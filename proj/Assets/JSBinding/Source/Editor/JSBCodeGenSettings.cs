@@ -14,6 +14,18 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
+#region C#导出接口特殊处理
+[assembly: CsExportedMethod(TargetType = typeof(GameObjectExt), TargetMethodName = "GetMissingComponent", JsCode = @"
+/* static T  */
+_jstype.staticDefinition.GetMissingComponent$1 = function(T, go) { 
+    var t = go.GetComponent$1(T);
+    if (t == null){
+        t = go.AddComponent$1(T);
+    }
+    return t;
+}")]
+
+#endregion
 public static class JSBCodeGenSettings
 {
     /// <summary>
@@ -35,6 +47,7 @@ public static class JSBCodeGenSettings
     private static readonly List<Type> _customTypeConfig = new List<Type>
     {
         //Custom
+        typeof(GameObjectExt),
         typeof (PerTest),
         typeof (PerTest.RefObject),
         //Custom
