@@ -6,16 +6,16 @@ using System;
 //此类做CS and JS bindings
 
 
-public class LoginManager
+public class LoginMgr
 {
-    private static LoginManager _instance;
-    public static LoginManager Instance
+    private static LoginMgr _instance;
+    public static LoginMgr Instance
     {
         get
         {
             if (_instance == null)
             {
-                _instance = new LoginManager();
+                _instance = new LoginMgr();
             }
             return _instance;
         }
@@ -32,7 +32,7 @@ public class TestLogin
 {
     private void Dofun()
     {
-	    LoginManager.Instance.onHaConnected += HandleonHaConnected;
+	    LoginMgr.Instance.onHaConnected += HandleonHaConnected;
     }
 
     private void HandleonHaConnected()

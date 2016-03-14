@@ -79,7 +79,7 @@ public class ShopItemData
     public bool IsPack { get; set; }
     public int ItemNum { get; set; }
 
-    public ItemCell item { get; set; }
+    public XmlTestItemCell item { get; set; }
     public LimeTimeNum TimeNum { get; set; }
     public LimitVipDayNum VipDayNum { get; set; }
     public LimitBuyNumPrices BuyNumPrice { get; set; }
@@ -154,7 +154,7 @@ public enum ItemType
 }
 
 
-public class ItemCell
+public class XmlTestItemCell
 {
     public int ID { get; set; }
     public string icon  { get; set; }
