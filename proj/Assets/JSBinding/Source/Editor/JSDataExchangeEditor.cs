@@ -208,7 +208,7 @@ public class JSDataExchangeEditor : JSDataExchangeMgr
             return arrayExchange.Get_Return(expVar);
         }
         var sb = new StringBuilder();
-        string keyword = GetMetatypeKeyword(type).Replace("get", "set");
+        string keyword = SetMetatypeKeyword(type);
 
         if (type.IsPrimitive)
             sb.AppendFormat("{0}((int)JSApi.SetType.Rval, ({1})({2}));", keyword, JSNameMgr.GetTypeFullName(type),

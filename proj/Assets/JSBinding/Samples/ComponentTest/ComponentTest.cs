@@ -1,4 +1,5 @@
-﻿using SharpKit.JavaScript;
+﻿using System;
+using SharpKit.JavaScript;
 using UnityEngine;
 using System.Collections;
 
@@ -21,12 +22,16 @@ public class ComponentTest : MonoBehaviour {
     void Start () {
         //通过js代码AddComponent的组件必须导出，否则无法添加
         //这种调用会报异常，暂时忽略  this.gameObject.AddComponent(typeof(BoxCollider));
-        this.gameObject.AddComponent<SphereCollider>();
+        GameObject go = new GameObject("NewGo",new Type[] {typeof(SphereCollider),typeof(BoxCollider),typeof(Animation)});
+        this.gameObject.AddComponent(typeof(SphereCollider));
+        this.gameObject.AddComponent<BoxCollider>();
         this.gameObject.AddComponent("Animation");
 
-        this.gameObject.GetOrAddComponent<BoxCollider>();
-        this.gameObject.GetOrAddComponent<Animation>();
+        //this.gameObject.GetOrAddComponent<BoxCollider>();
+        //this.gameObject.GetOrAddComponent<Animation>();
 
+        var objs = Resources.FindObjectsOfTypeAll<Animation>();
+        Debug.LogError("Find Objects: "+objs.Length);
         //GetOrAddComponent这类扩展方法只能用于添加C#的组件，否则Unity会Crash掉
         //this.gameObject.GetOrAddComponent<AwakeC>();
 

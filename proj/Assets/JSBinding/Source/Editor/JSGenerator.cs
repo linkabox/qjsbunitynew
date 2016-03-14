@@ -303,8 +303,6 @@ if (!_found) [[
     public static StringBuilder BuildConstructors(Type type, ConstructorInfo[] constructors, int slot,
         int howmanyConstructors, List<string> lstNames)
     {
-        string fmt = @"
-_jstype.definition.{0} = function({1}) [[ CS.Call({2}); ]]";
 
         var sb = new StringBuilder();
         var argActual = new args();
@@ -342,13 +340,29 @@ _jstype.definition.{0} = function({1}) [[ CS.Call({2}); ]]";
             for (int j = 0; j < ps.Length; j++)
             {
                 argFormal.Add("a" + j);
-                argActual.Add("a" + j);
+                var par = ps[j];
+                if (par.ParameterType == typeof(System.Type))
+                {
+                    //如果是System.Type类型参数需要传递其FullName回来
+                    //在C#层通过JSDataExchangeMgr.GetTypeByName获取其类型对象
+                    argActual.Add(string.Format("a{0}.get_FullName()", j));
+                }
+                else if (par.ParameterType.IsArray && par.ParameterType.GetElementType() == typeof(System.Type))
+                {
+                    //如果是System.Type类型数组参数，通过转换获取其类型全名数组
+                    argActual.Add(string.Format("jsb_convertTypeParamsArray(a{0})", j));
+                }
+                else
+                {
+                    argActual.Add("a" + j);
+                }
             }
 
             string mName = SharpKitMethodName("ctor", ps, howmanyConstructors > 1);
             lstNames.Add(mName);
 
-            sb.AppendFormat(fmt,
+            sb.AppendFormat(@"
+_jstype.definition.{0} = function({1}) [[ CS.Call({2}); ]]",
                 mName, // [0]
                 argFormal, // [1]
                 argActual); // [2]
@@ -359,18 +373,6 @@ _jstype.definition.{0} = function({1}) [[ CS.Call({2}); ]]";
     // can handle all methods
     public static StringBuilder BuildMethods(Type type, MethodInfo[] methods, int slot, List<string> lstNames)
     {
-        string fmt = @"
-/* {6} */
-_jstype.definition.{1} = function({2}) [[ 
-    {9}
-    return CS.Call({7}, {3}, {4}, false, {8}{5}); 
-]]";
-        string fmtStatic = @"
-/* static {6} {8} */
-_jstype.staticDefinition.{1} = function({2}) [[ 
-    {9}
-    return CS.Call({7}, {3}, {4}, true{5}); 
-]]";
 
         //bool bIsSystemObject = (type == typeof(System.Object));
 
@@ -441,6 +443,17 @@ _jstype.staticDefinition.{1} = function({2}) [[
                 {
                     sbActualParam.AppendFormat(", jsb_formatParamsArray({0}, a{0}, arguments)", j);
                 }
+                else if (par.ParameterType.IsArray && par.ParameterType.GetElementType() == typeof(System.Type))
+                {
+                    //如果是System.Type类型数组参数，通过转换获取其类型全名数组
+                    sbActualParam.AppendFormat(", jsb_convertTypeParamsArray(a{0})", j);
+                }
+                else if (par.ParameterType == typeof(System.Type))
+                {
+                    //如果是System.Type类型参数需要传递其FullName回来
+                    //在C#层通过JSDataExchangeMgr.GetTypeByName获取其类型对象
+                    sbActualParam.AppendFormat(", a{0}.get_FullName()", j);
+                }
                 else
                 {
                     sbActualParam.AppendFormat(", a{0}", j);
@@ -459,7 +472,12 @@ _jstype.staticDefinition.{1} = function({2}) [[
             lstNames.Add((method.IsStatic ? "Static_" : "") + mName);
 
             if (!method.IsStatic)
-                sb.AppendFormat(fmt,
+                sb.AppendFormat(@"
+/* {6} */
+_jstype.definition.{1} = function({2}) [[ 
+    {9}
+    return CS.Call({7}, {3}, {4}, false, {8}{5}); 
+]]",
                     className,
                     mName, // [1] method name
                     sbFormalParam, // [2] formal param
@@ -467,12 +485,17 @@ _jstype.staticDefinition.{1} = function({2}) [[
                     i, // [4] index
                     sbActualParam, // [5] actual param
                     method.ReturnType.Name, // [6] return type name
-                    (int) JSVCall.Oper.METHOD, // [7] OP
+                    (int)JSVCall.Oper.METHOD, // [7] OP
                     "this", // [8] this
                     sbInitT //[9] generic types init
                     );
             else
-                sb.AppendFormat(fmtStatic,
+                sb.AppendFormat(@"
+/* static {6} {8} */
+_jstype.staticDefinition.{1} = function({2}) [[ 
+    {9}
+    return CS.Call({7}, {3}, {4}, true{5}); 
+]]",
                     className,
                     mName,
                     sbFormalParam,
@@ -480,7 +503,7 @@ _jstype.staticDefinition.{1} = function({2}) [[
                     i,
                     sbActualParam,
                     method.ReturnType.Name,
-                    (int) JSVCall.Oper.METHOD,
+                    (int)JSVCall.Oper.METHOD,
                     "",
                     sbInitT);
         }

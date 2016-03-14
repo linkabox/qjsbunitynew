@@ -133,6 +133,16 @@ function jsb_formatParamsArray(preCount, argArray, funArguments)
     }
 }
 
+function jsb_convertTypeParamsArray(jsTypeArray)
+{
+    //将[Typeof(),...]类型数组转换为其[FullName,...]类型全名数组
+    var fullNames = new Array();
+    for (var i = jsTypeArray.length - 1; i >= 0; i--) {
+        fullNames[i] = jsTypeArray[i].get_FullName();
+    }
+    return fullNames;
+}
+
 function jsb_IsInheritanceRel(baseClassName, subClassName)
 {
     var arr = subClassName.split(".");

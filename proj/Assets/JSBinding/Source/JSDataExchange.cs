@@ -512,6 +512,12 @@ public class JSDataExchangeMgr
 //    }
 
     static Dictionary<string, Type> typeCache = new Dictionary<string,Type>();
+
+    public static Type GetTypeByJsParam(int e)
+    {
+        string typeFullName = JSApi.getStringS(e);
+        return GetTypeByName(typeFullName);
+    }
     public static Type GetTypeByName(string typeName, Type defaultType = null)
     {
         Type t = null;
@@ -691,12 +697,63 @@ public class JSDataExchangeMgr
         }
         return lst.ToArray();
     }
-//     public static string GetMetatypeKeyword(Type type, out bool isWhatever)
-//     {
-//         string str = GetMetatypeKeyword(type);
-//         isWhatever = (str == "Whatever");
-//         return str;
-//     }
+
+    public static string SetMetatypeKeyword(Type type)
+    {
+        string ret = string.Empty;
+        if (type.IsArray)
+        {
+            Debug.LogError("Array should not call SetMetatypeKeyword()");
+            return ret;
+        }
+
+        if (type == typeof(string))
+            ret = "JSApi.setStringS";
+        else if (type.IsEnum)
+            ret = "JSApi.setEnum";
+        else if (type.IsPrimitive)
+        {
+            if (type == typeof(System.Boolean))
+                ret = "JSApi.setBooleanS";
+            else if (type == typeof(System.Char))
+                ret = "JSApi.setChar";
+            else if (type == typeof(System.Byte))
+                ret = "JSApi.setByte";
+            else if (type == typeof(System.SByte))
+                ret = "JSApi.setSByte";
+            else if (type == typeof(System.UInt16))
+                ret = "JSApi.setUInt16";
+            else if (type == typeof(System.Int16))
+                ret = "JSApi.setInt16";
+            else if (type == typeof(System.UInt32))
+                ret = "JSApi.setUInt32";
+            else if (type == typeof(System.Int32))
+                ret = "JSApi.setInt32";
+            else if (type == typeof(System.UInt64))
+                ret = "JSApi.setUInt64";
+            else if (type == typeof(System.Int64))
+                ret = "JSApi.setInt64";
+            else if (type == typeof(System.Single))
+                ret = "JSApi.setSingle";
+            else if (type == typeof(System.Double))
+                ret = "JSApi.setDouble";
+            else if (type == typeof(System.IntPtr))
+                ret = "JSApi.setIntPtr";
+            else
+                Debug.LogError("444 Unknown primitive type");
+        }
+        else if (type == typeof(System.Object) || type.IsGenericParameter)
+            ret = "JSMgr.datax.setWhatever";
+        else if (type == typeof(Vector3))
+            ret = "JSApi.setVector3S";
+        else if (type == typeof(Vector2))
+            ret = "JSApi.setVector2S";
+        else
+            ret = "JSMgr.datax.setObject";
+
+        return ret;
+    }
+
     public static string GetMetatypeKeyword(Type type)
     {
         string ret = string.Empty;
@@ -708,6 +765,8 @@ public class JSDataExchangeMgr
 
         if (type == typeof(string))
             ret = "JSApi.getStringS";
+        else if (type == typeof(System.Type))
+            ret = "JSDataExchangeMgr.GetTypeByJsParam";
         else if (type.IsEnum)
             ret = "JSApi.getEnum";
         else if (type.IsPrimitive)
@@ -783,27 +842,16 @@ public class JSDataExchange_Arr
             elementFullName = JSNameMgr.GetTypeFullName(elementType);
         }
         sb.AppendFormat("JSDataExchangeMgr.GetJSArg<{0}>(() =>\n", arrayFullName)
-            .Append("    [[\n")
-        .AppendFormat("    int jsObjID = JSApi.getObject((int)JSApi.GetType.Arg);\n")
-        .AppendFormat("    int length = JSApi.getArrayLength(jsObjID);\n")
-        .AppendFormat("    var ret = new {0}[length];\n", elementFullName)
-        .AppendFormat("    for (var i = 0; i < length; i++) [[\n")
-        .AppendFormat("        JSApi.getElement(jsObjID, i);\n")
-        .AppendFormat("        ret[i] = ({0}){1}((int)JSApi.GetType.SaveAndRemove);\n", elementFullName, getVal)
-        .AppendFormat("    ]]\n")
-        .AppendFormat("    return ret;\n")
-        .AppendFormat("]])\n");
-
-//         sb.AppendFormat("JSDataExchangeMgr.GetJSArg<{0}>(() => [[\n", arrayFullName)
-//         .AppendFormat("    IntPtr jsObj = JSApi.JSh_ArgvObject(JSMgr.cx, vc.vp, vc.currIndex++);\n")
-//         .AppendFormat("    int length = JSApi.JSh_GetArrayLength(JSMgr.cx, jsObj);\n")
-//         .AppendFormat("    var ret = new {0}[length];\n", elementFullName)
-//         .AppendFormat("    for (var i = 0; i < length; i++) [[\n")
-//         .AppendFormat("        JSApi.JSh_GetElement(JSMgr.cx, jsObj, (uint)i, ref vc.valTemp);\n")
-//         .AppendFormat("        ret[i] = ({0}){1}((int)JSApi.GetType.Jsval);\n", elementFullName, getVal)
-//         .AppendFormat("    ]]\n")
-//         .AppendFormat("    return ret;\n")
-//         .AppendFormat("]])\n");
+            .Append("        [[\n")
+        .AppendFormat("            int jsObjID = JSApi.getObject((int)JSApi.GetType.Arg);\n")
+        .AppendFormat("            int length = JSApi.getArrayLength(jsObjID);\n")
+        .AppendFormat("            var ret = new {0}[length];\n", elementFullName)
+        .AppendFormat("            for (var i = 0; i < length; i++) [[\n")
+        .AppendFormat("                JSApi.getElement(jsObjID, i);\n")
+        .AppendFormat("                ret[i] = ({0}){1}((int)JSApi.GetType.SaveAndRemove);\n", elementFullName, getVal)
+        .AppendFormat("            ]]\n")
+        .AppendFormat("            return ret;\n")
+        .AppendFormat("        ]])");
 
         sb.Replace("[[", "{");
         sb.Replace("]]", "}");
@@ -824,7 +872,7 @@ public class JSDataExchange_Arr
         }
 
         StringBuilder sb = new StringBuilder();
-        string getValMethod = JSDataExchangeMgr.GetMetatypeKeyword(elementType).Replace("get", "set");
+        string getValMethod = JSDataExchangeMgr.SetMetatypeKeyword(elementType);
 
         // 2015.Sep.2
         // +判断arrRet为null的情况
