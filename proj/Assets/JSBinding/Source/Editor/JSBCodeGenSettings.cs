@@ -15,7 +15,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 #region C#导出接口特殊处理
-[assembly: CsExportedMethod(TargetType = typeof(GameObjectHelper), TargetMethodName = "GetOrAddComponent", JsCode = @"
+[assembly: CsExportedMethod(TargetType = typeof(TestExtensionMethod), TargetMethodName = "GetOrAddComponent", JsCode = @"
 /* static T  */
 _jstype.staticDefinition.GetOrAddComponent$1 = function(T, go) { 
     var t = go.GetComponent$1(T);
@@ -47,7 +47,7 @@ public static class JSBCodeGenSettings
     private static readonly List<Type> _customTypeConfig = new List<Type>
     {
         //Custom
-        typeof(GameObjectHelper),
+        typeof(TestExtensionMethod),
         typeof (PerTest),
         typeof (PerTest.RefObject),
         //Custom
