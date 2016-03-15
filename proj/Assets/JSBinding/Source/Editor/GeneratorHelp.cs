@@ -437,29 +437,38 @@ public static class GeneratorHelp
     /// <param name="type">The type.</param>
     /// <param name="methodName">Name of the method.</param>
     /// <returns></returns>
-    public static bool MethodIsOverloaded(Type type, string methodName)
+    public static bool MethodIsOverloaded(Type type, MethodInfo methodInfo)
     {
-        bool ret = MethodIsOverloaded2(type, methodName, BindingFlagsMethod2);
-        if (!ret)
+        string methodName = methodInfo.Name;
+        bool ret = false;
+        if (methodInfo.IsStatic)
         {
-            if (MethodIsOverloaded2(type, methodName, BindingFlagsMethod3))
-            {
-                ret = true;
-                Debug.Log("NEW OVERLOAD " + type.Name + "." + methodName);
-            }
+            ret = HasOverloadedMethod(type, methodName, BindingFlags.Public
+                                                        | BindingFlags.Static
+                                                        | BindingFlags.FlattenHierarchy);
+        }
+        else
+        {
+            ret = HasOverloadedMethod(type, methodName, BindingFlags.Public
+                                                        | BindingFlags.Instance);
+        }
+
+        if (ret)
+        {
+            Debug.Log("NEW OVERLOAD " + type.Name + "." + methodName);
         }
         return ret;
     }
-    public static bool MethodIsOverloaded2(Type type, string methodName, BindingFlags flag)
+    private static bool HasOverloadedMethod(Type type, string methodName, BindingFlags flag)
     {
-        MethodInfo[] methods = type.GetMethods(flag);
-        int N = 0;
+        var methods = type.GetMethods(flag);
+        int count = 0;
         foreach (var m in methods)
         {
             if (m.Name == methodName)
             {
-                N++;
-                if (N >= 2)
+                count++;
+                if (count >= 2)
                     return true;
             }
         }
@@ -471,18 +480,6 @@ public static class GeneratorHelp
         | BindingFlags.Instance 
         | BindingFlags.Static 
         | BindingFlags.DeclaredOnly;
-
-    public static BindingFlags BindingFlagsMethod2 =
-        BindingFlags.Public
-        | BindingFlags.NonPublic
-        | BindingFlags.Instance
-        | BindingFlags.Static;
-
-    public static BindingFlags BindingFlagsMethod3 =
-        BindingFlags.Public
-        | BindingFlags.NonPublic
-        | BindingFlags.Static
-        | BindingFlags.FlattenHierarchy;
 
     public static BindingFlags BindingFlagsProperty = 
         BindingFlags.Public 

@@ -51,6 +51,24 @@ public class ComponentTest : MonoBehaviour {
 
         //gameObject.AddComponent<MentosKXT>();
         gameObject.GetOrAddComponent<MentosKXT>();
+        var kxt = UnityEngine.Object.FindObjectOfType<MentosKXT>();
+        if (kxt != null)
+        {
+            Debug.LogError("Find it kxt");
+        }
+        else
+        {
+            Debug.LogError("Nothing to find kxt");
+        }
+        var obj = UnityEngine.Object.FindObjectOfType(typeof (MentosKXT));
+        if (obj != null)
+        {
+            Debug.LogError("Find it obj");
+        }
+        else
+        {
+            Debug.LogError("Nothing to find obj");
+        }
     }
 	
 	// Update is called once per frame

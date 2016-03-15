@@ -105,7 +105,7 @@ public static class JSGenerator
         return name;
     }
 
-    public static string SharpKitMethodName(string methodName, ParameterInfo[] paramS, bool overloaded, int TCounts = 0)
+    public static string GetOverloadedMethodSuffix(string methodName, ParameterInfo[] paramS, bool overloaded, int TCounts = 0)
     {
 //         if (!overloaded && TCounts > 0)
 //         {
@@ -358,7 +358,7 @@ if (!_found) [[
                 }
             }
 
-            string mName = SharpKitMethodName("ctor", ps, howmanyConstructors > 1);
+            string mName = GetOverloadedMethodSuffix("ctor", ps, howmanyConstructors > 1);
             lstNames.Add(mName);
 
             sb.AppendFormat(@"
@@ -404,7 +404,7 @@ _jstype.definition.{0} = function({1}) [[ CS.Call({2}); ]]",
 
             if (!bOverloaded)
             {
-                if (GeneratorHelp.MethodIsOverloaded(type, method.Name))
+                if (GeneratorHelp.MethodIsOverloaded(type, method))
                 {
                     bOverloaded = true;
                     //Debug.Log("$$$ " + type.Name + "." + method.Name + (method.IsStatic ? " true" : " false"));
@@ -468,7 +468,7 @@ _jstype.definition.{0} = function({1}) [[ CS.Call({2}); ]]",
                 methodName = "toString";
             }
 
-            string mName = SharpKitMethodName(methodName, paramS, bOverloaded, TCount);
+            string mName = GetOverloadedMethodSuffix(methodName, paramS, bOverloaded, TCount);
             lstNames.Add((method.IsStatic ? "Static_" : "") + mName);
 
             if (!method.IsStatic)
