@@ -10,6 +10,23 @@ public class MiscTest : MonoBehaviour {
 //        PerTest.test123(1.5, 1.3);
         PerTest.testString(null, "abc");
 
+		var config = Resources.Load ("shopconfig");
+		Debug.LogError ("Resources.Load: "+ config);
+
+		config = Resources.Load<TextAsset> ("shopconfig");
+		Debug.LogError ("Resources.Load<T>: "+ config);
+
+		var obj = new PerTest ();
+		obj.IDs.Add (123);
+		obj.IDs.Add (345);
+		Debug.LogError ("======ForEach List======");
+		foreach (int i in obj.IDs) {
+			Debug.LogError (i);
+		}
+		Debug.LogError ("======For List======");
+		for (int i = 0; i < obj.IDs.Count; ++i) {
+			Debug.LogError (obj.IDs[i]);
+		}
         //PrintStrings("a", "b", "c");
         //print(null);
 	}

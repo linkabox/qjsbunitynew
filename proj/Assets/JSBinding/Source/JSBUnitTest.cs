@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 
 public static class TestExtensionMethod
 {
@@ -25,6 +26,7 @@ _jstype.staticDefinition.GetOrAddComponent$1 = function(T, go) {
 
 public class PerTest
 {
+	public List<int> IDs = new List<int>(); 
     public event System.Action<MonoBehaviour> OnEventFinish;
     public static event System.Action OnStaticEventFinish;
     public System.Action OnDelegateFinish;

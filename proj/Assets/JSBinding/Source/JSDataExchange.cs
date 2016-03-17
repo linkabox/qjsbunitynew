@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using System.Reflection;
 
 using jsval = JSApi.jsval;
+using System.Collections;
 
 public class JSDataExchangeMgr
 {
@@ -331,10 +332,17 @@ public class JSDataExchangeMgr
             }
             if (jsObjID == 0)
             {
-                if (csObj is CSRepresentedObject)
-                {
-                    jsObjID = ((CSRepresentedObject)csObj).jsObjID;
-                }
+				if (csObj is CSRepresentedObject) {
+					jsObjID = ((CSRepresentedObject)csObj).jsObjID;
+				} else if (csObj is IEnumerator) {
+					//如果是实现IEnumerator接口的类型，直接创建IEnumerator对应的js对象
+					string typeName = "System.Collections.IEnumerator";
+					jsObjID = JSApi.createJSClassObject (typeName);
+					if (jsObjID != 0)
+						JSMgr.addJSCSRel(jsObjID, csObj);
+					else
+						Debug.LogError("Return a \"" + typeName + "\" to JS failed. Did you forget to export that class?");
+				}
                 else
                 {
                     if (typeInfo.IsDelegate)

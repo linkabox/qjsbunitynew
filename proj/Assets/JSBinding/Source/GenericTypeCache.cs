@@ -118,80 +118,79 @@ class GenericTypeCache
         dict.Add(type, tm);
         return tm;
     }
-    static bool matchReturnType(Type targetType, string typeName, TypeFlag flag)
+	static bool matchReturnType(Type returnType, string typeName, TypeFlag flag, bool isGenericType)
     {
-        if (targetType.IsGenericParameter && flag != TypeFlag.IsT)
-        {
-            return false;
-        }
-
-        return (targetType.Name == typeName);
+		//返回值不是泛型参数，或者不是泛型类时，判断返回值类型名是否一致
+		if((flag & TypeFlag.IsT) == 0 || !isGenericType)
+			return (returnType.Name == typeName);
+		
+		return true;
     }
-    static bool matchParameters(ParameterInfo[] pi, string[] paramTypeNames, TypeFlag[] typeFlags)
-    {
-        int paramLen = (paramTypeNames == null ? 0 : paramTypeNames.Length);
-        int flagLen = (typeFlags == null ? 0 : typeFlags.Length);
+	static bool matchParameters(ParameterInfo[] pi, string[] paramTypeNames, TypeFlag[] typeFlags)
+	{
+		int paramLen = (paramTypeNames == null ? 0 : paramTypeNames.Length);
+		int flagLen = (typeFlags == null ? 0 : typeFlags.Length);
 
-        if (paramLen == 0)
-        {
-            if (!(pi == null || pi.Length == 0))
-            {
-                return false;
-            }
-        }
+		if (paramLen == 0)
+		{
+			if (!(pi == null || pi.Length == 0))
+			{
+				return false;
+			}
+		}
 
-        if (pi.Length != paramLen)
-        {
-            return false;
-        }
+		if (pi.Length != paramLen)
+		{
+			return false;
+		}
 
-        for (var i = 0; i < pi.Length; i++)
-        {
-            Type real_t = pi[i].ParameterType;
-            TypeFlag flag = (flagLen > i ? typeFlags[i] : TypeFlag.None);
+		for (var i = 0; i < pi.Length; i++)
+		{
+			Type real_t = pi[i].ParameterType;
+			TypeFlag flag = (flagLen > i ? typeFlags[i] : TypeFlag.None);
 
-            bool byRef = 0 != (flag & TypeFlag.IsRef);
-            if ((byRef && !real_t.IsByRef) || (!byRef && real_t.IsByRef)) 
-                return false;
+			bool byRef = 0 != (flag & TypeFlag.IsRef);
+			if ((byRef && !real_t.IsByRef) || (!byRef && real_t.IsByRef)) 
+				return false;
 
-            bool isOut = 0 != (flag & TypeFlag.IsOut);
-            if ((isOut && !pi[i].IsOut) || (!isOut && pi[i].IsOut))
-                return false;
+			bool isOut = 0 != (flag & TypeFlag.IsOut);
+			if ((isOut && !pi[i].IsOut) || (!isOut && pi[i].IsOut))
+				return false;
 
-            if (byRef || isOut)
-            {
-                real_t = real_t.GetElementType();
-            }
+			if (byRef || isOut)
+			{
+				real_t = real_t.GetElementType();
+			}
 
-            bool isArray = 0 != (flag & TypeFlag.IsArray);
-            if (isArray)
-            {
-                if (!pi[i].ParameterType.IsArray)
-                    return false;
-            }
-            else
-            {
-                bool isGT = 0 != (flag & TypeFlag.IsGenericType);
-                if (isGT)
-                {
-                    if (!real_t.IsGenericType)
-                        return false;
-                    if (real_t.GetGenericTypeDefinition().Name != paramTypeNames[i])
-                        return false;
-                }
-                else
-                {
-                    bool isT = 0 != (flag & TypeFlag.IsT);
-                    if (!isT)
-                    {
-                        if (real_t.Name != paramTypeNames[i])
-                            return false;
-                    }
-                }
-            }
-        }
-        return true;
-    }
+			bool isArray = 0 != (flag & TypeFlag.IsArray);
+			if (isArray)
+			{
+				if (!pi[i].ParameterType.IsArray)
+					return false;
+			}
+			else
+			{
+				bool isGT = 0 != (flag & TypeFlag.IsGenericType);
+				if (isGT)
+				{
+					if (!real_t.IsGenericType)
+						return false;
+					if (real_t.GetGenericTypeDefinition().Name != paramTypeNames[i])
+						return false;
+				}
+				else
+				{
+					bool isT = 0 != (flag & TypeFlag.IsT);
+					if (!isT)
+					{
+						if (real_t.Name != paramTypeNames[i])
+							return false;
+					}
+				}
+			}
+		}
+		return true;
+	}
 
     public static ConstructorInfo getConstructor(Type type, ConstructorID id)
     {
@@ -278,7 +277,7 @@ class GenericTypeCache
                 }
                 if (curr.Name == id.name)
                 {
-                    if (matchReturnType(curr.PropertyType, id.retTypeName, id.retTypeFlag) &&
+					if (matchReturnType(curr.PropertyType, id.retTypeName, id.retTypeFlag, curr.DeclaringType.IsGenericType) &&
                         matchParameters(curr.GetIndexParameters(), id.paramTypeNames, id.paramFlags))
                     {
                         if (i != -1)
@@ -314,7 +313,7 @@ class GenericTypeCache
 
                 if (curr.Name == id.name) // method name
                 {
-                    if (matchReturnType(curr.ReturnType, id.retTypeName, id.retTypeFlag) &&
+					if (matchReturnType(curr.ReturnType, id.retTypeName, id.retTypeFlag, curr.DeclaringType.IsGenericType) &&
                         matchParameters(curr.GetParameters(), id.paramTypeNames, id.paramFlags))
                     {
                         if (i != -1)
