@@ -1859,6 +1859,11 @@ Number.prototype.CompareTo$$Int32 = function (value){
         return -1;
     return this > value ? 1 : 0;
 };
+Number.prototype.CompareTo$$Int64 = function (value){
+    if (this < value)
+        return -1;
+    return this > value ? 1 : 0;
+};
 var System$Nullable$1 = {
     fullname: "System.Nullable$1",
     baseTypeName: "System.Object",

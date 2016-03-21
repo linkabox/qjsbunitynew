@@ -1,4 +1,4 @@
-﻿#define USE_SHELL
+﻿//#define USE_SHELL
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -155,6 +155,10 @@ public class Compiler
 #endif
             return false;
         }
+
+#if !USE_SHELL
+		Debug.LogError(outputLog);
+#endif
         EditorUtility.DisplayDialog("SharpKitCompiler", "Compile success.", "OK");
         return true;
     }

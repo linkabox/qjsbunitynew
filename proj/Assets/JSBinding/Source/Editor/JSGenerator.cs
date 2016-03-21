@@ -217,39 +217,10 @@ _jstype.{7}.set_{0} = function({10}v) [[ return CS.Call({2}, {3}, {4}, {5}{6}{8}
 
     public static StringBuilder BuildHeader(Type type)
     {
-        string fmt = @"if (typeof(JsTypes) == 'undefined')
-    var JsTypes = [];
-
-// {0}
-_jstype = 
-[[
-    definition: [[]],
-    staticDefinition: [[]],
-    fields: [[]],
-    staticFields: [[]],
-    assemblyName: '{1}',
-    Kind: '{2}',
-    fullname: '{3}', {4}
-    {5}
-]];
-
-var _found = false;
-for (var i = 0; i < JsTypes.length; i++) [[
-    if (JsTypes[i].fullname == _jstype.fullname) [[
-        JsTypes[i] = _jstype;
-        _found = true;
-        break;
-    ]]
-]]
-if (!_found) [[
-    JsTypes.push(_jstype);
-]]
-
-";
         string jsTypeName = JSNameMgr.GetTypeFullName(type);
         jsTypeName = jsTypeName.Replace('.', '$');
 
-        string assemblyName = "";
+		string assemblyName = type.Assembly.FullName;
         string Kind = "unknown";
         if (type.IsClass)
         {
@@ -289,13 +260,41 @@ if (!_found) [[
         }
 
         var sb = new StringBuilder();
-        sb.AppendFormat(fmt,
+        sb.AppendFormat(@"if (typeof(JsTypes) == 'undefined')
+    var JsTypes = [];
+
+// {0}
+_jstype = 
+[[
+    definition: [[]],
+    staticDefinition: [[]],
+    fields: [[]],
+    staticFields: [[]],
+    assemblyName: '{1}',
+    Kind: '{2}',
+    fullname: '{3}', {4}
+    {5}
+]];
+
+var _found = false;
+for (var i = 0; i < JsTypes.length; i++) [[
+    if (JsTypes[i].fullname == _jstype.fullname) [[
+        JsTypes[i] = _jstype;
+        _found = true;
+        break;
+    ]]
+]]
+if (!_found) [[
+    JsTypes.push(_jstype);
+]]
+
+",
             jsTypeName, // [0]
             assemblyName, // [1]
             Kind, // [2] 
-            fullname, // [3] full name
-            sbI, // [4] interfaceNames
-            baseTypeName.Length > 0 ? "baseTypeName: '" + baseTypeName + "'" : ""); // [5] baseTypeName
+            fullname, // [4] full name
+            sbI, // [5] interfaceNames
+            baseTypeName.Length > 0 ? "baseTypeName: '" + baseTypeName + "'" : ""); // [6] baseTypeName
 
         return sb;
     }

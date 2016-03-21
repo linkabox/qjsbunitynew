@@ -482,23 +482,24 @@ JsCompiler.Compile_Phase1 = function (){
             // add a function to obtain c# Type
             jsType.definition.ctor.getNativeType = function () 
 			{
-                if (this.__nativeType != undefined) 
-				{
-                    return this.__nativeType;
-                }
-                if (this._type && this._type.fullname) 
-				{
-                    this.__nativeType = this._type.fullname;
-					this.__nativeType = this.__nativeType.replace("$1", "<>")
-						.replace("$2", "<,>")
-						.replace("$3", "<,,>")
-						.replace("$4", "<,,,>");
-                } 
-				else
-				{
-					this.__nativeType = "ERROR_unknowntype";
-				}
-				return this.__nativeType;
+                return JsTypeHelper.GetAssemblyQualifiedName(this._type);
+                // if (this.__nativeType != undefined) 
+                // {
+                // return this.__nativeType;
+                // }
+                // if (this._type && this._type.fullname) 
+                // {
+                // this.__nativeType = this._type.fullname;
+                // this.__nativeType = this.__nativeType.replace("$1", "`1")
+                //     .replace("$2", "`2")
+                //     .replace("$3", "`3")
+                //     .replace("$4", "`4");
+                // } 
+                // else
+                // {
+                // this.__nativeType = "ERROR_unknowntype";
+                // }
+                // return this.__nativeType;
             }
 
             if (jsType.fields != undefined) {
@@ -953,6 +954,10 @@ JsTypeHelper.FindType = function (name, throwIfNotFound){
 JsTypeHelper.GetAssemblyQualifiedName = function (type){
     if (type._AssemblyQualifiedName == null){
         var name = type.fullname;
+        name = name.replace("$1", "`1")
+            .replace("$2", "`2")
+            .replace("$3", "`3")
+            .replace("$4", "`4");
         if (type.assemblyName != null)
             name += ", " + type.assemblyName;
         type._AssemblyQualifiedName = name;

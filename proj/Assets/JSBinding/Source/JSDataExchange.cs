@@ -531,21 +531,20 @@ public class JSDataExchangeMgr
         Type t = null;
         if (!typeCache.TryGetValue(typeName, out t))
         {
-            foreach (Assembly a in AppDomain.CurrentDomain.GetAssemblies())
-            {
-                t = a.GetType(typeName);
-                if (t != null)
-                {
-                    // !!!
-                    // if a type is marked with JsTypeAttribute
-                    // don't return it
-                    if (t.IsDefined(typeof(SharpKit.JavaScript.JsTypeAttribute), false))
-                    {
-                        t = null;
-                    }
-                    break;
-                }
-            }
+			t = Type.GetType (typeName);
+			if (t == null) {
+				foreach (Assembly a in AppDomain.CurrentDomain.GetAssemblies())
+				{
+					t = a.GetType(typeName);
+					if (t != null)
+						break;
+				}
+			}
+            
+			//忽略带JsType属性的类型
+			if (t != null && t.IsDefined (typeof(SharpKit.JavaScript.JsTypeAttribute), false))
+				t = null;
+			
             typeCache[typeName] = t; // perhaps null
             //if (t == null)
             //{
@@ -666,7 +665,7 @@ public class JSDataExchangeMgr
         {
             string typeName = JSApi.getStringS((int)JSApi.GetType.Arg);
             System.Type t = JSDataExchangeMgr.GetTypeByName(typeName, typeof(CSRepresentedObject));
-            genericTypes[i] = t;
+			genericTypes[i] = GetGenericTypeBaseType(t);
             if (t == null)
             {
                 return null;
@@ -676,6 +675,23 @@ public class JSDataExchangeMgr
         MethodInfo method = methodT.MakeGenericMethod(genericTypes);
         return method;
     }
+
+	/// <summary>
+	/// 递归遍历获取带泛型参数类型的基类，例如：TweenerCore<T1, T2, TPlugOptions>,返回Tweener
+	/// </summary>
+	/// <returns>The generic type base type.</returns>
+	/// <param name="type">Type.</param>
+	public static Type GetGenericTypeBaseType(Type type){
+		if (!type.ContainsGenericParameters)
+			return type;
+
+		var baseType = type.BaseType;
+		if (baseType == null) {
+			return typeof(System.Object);
+		}
+
+		return GetGenericTypeBaseType (baseType);
+	}
     //
     // 
     //
