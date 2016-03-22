@@ -35,6 +35,7 @@ public partial class UnityEngineManual
             if (v.Value)
                 sb.AppendFormat("Manual: {0}\n", v.Key);
         }
-        Debug.Log(sb);
+		if(sb.Length > 0)
+        	Debug.Log(sb);
     }
 }

@@ -482,6 +482,10 @@ JsCompiler.Compile_Phase1 = function (){
             // add a function to obtain c# Type
             jsType.definition.ctor.getNativeType = function () 
 			{
+                if(this._type.assemblyName == "SharpKitProj")
+                {
+                    return this._type.fullname;
+                }
                 return JsTypeHelper.GetAssemblyQualifiedName(this._type);
                 // if (this.__nativeType != undefined) 
                 // {

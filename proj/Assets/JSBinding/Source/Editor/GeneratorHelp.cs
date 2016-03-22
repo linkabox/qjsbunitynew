@@ -439,25 +439,22 @@ public static class GeneratorHelp
     /// <returns></returns>
     public static bool MethodIsOverloaded(Type type, MethodInfo methodInfo)
     {
-        string methodName = methodInfo.Name;
-        bool ret = false;
-        if (methodInfo.IsStatic)
-        {
-            ret = HasOverloadedMethod(type, methodName, BindingFlags.Public
-                                                        | BindingFlags.Static
-                                                        | BindingFlags.FlattenHierarchy);
-        }
-        else
-        {
-            ret = HasOverloadedMethod(type, methodName, BindingFlags.Public
-                                                        | BindingFlags.Instance);
-        }
+		string methodName = methodInfo.Name;
+		bool ret = HasOverloadedMethod (type, methodName, 
+			           BindingFlags.Public
+			           | BindingFlags.Static
+			           | BindingFlags.Instance);
+		if (!ret) {
+			ret = HasOverloadedMethod (type, methodName, 
+				BindingFlags.Public
+				| BindingFlags.Static
+				| BindingFlags.FlattenHierarchy);
+		}
 
-        if (ret)
-        {
-            Debug.Log("NEW OVERLOAD " + type.Name + "." + methodName);
-        }
-        return ret;
+		if (ret) {
+			Debug.Log ("NEW OVERLOAD " + type.Name + "." + methodName);
+		}
+		return ret;
     }
     private static bool HasOverloadedMethod(Type type, string methodName, BindingFlags flag)
     {

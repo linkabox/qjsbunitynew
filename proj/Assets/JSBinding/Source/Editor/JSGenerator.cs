@@ -663,9 +663,5 @@ _jstype.staticDefinition.{1} = function({2}) [[
             sb.Append("\r\n");
         }
         File.WriteAllText(JSAnalyzer.GetAllExportedMembersFile(), sb.ToString());
-
-        //Debug.Log("Generate JS Bindings OK. enum " + JSBindingSettings.enums.Length + ", class " +
-        //          JSBindingSettings.classes.Length);
-        Debug.Log("Generate JS Bindings OK. class " + CSGenerator.ExportTypeSet.Count);
     }
 }

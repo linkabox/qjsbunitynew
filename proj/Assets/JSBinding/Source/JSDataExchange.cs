@@ -528,6 +528,9 @@ public class JSDataExchangeMgr
     }
     public static Type GetTypeByName(string typeName, Type defaultType = null)
     {
+		if (string.IsNullOrEmpty (typeName))
+			return null;
+
         Type t = null;
         if (!typeCache.TryGetValue(typeName, out t))
         {
