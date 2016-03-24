@@ -114,6 +114,22 @@ public class PerTest
 
     }
 
+	public static void testList(List<int> nums){
+		if (nums != null && nums.Count > 0) {
+			foreach (var i in nums) {
+				Debug.LogError ("i:"+i);
+			}
+		}
+	}
+
+	public static void testArray(int[] nums){
+		if (nums != null && nums.Length > 0) {
+			foreach (var i in nums) {
+				Debug.LogError ("i:"+i);
+			}
+		}
+	}
+
     public static void testRefParams(ref string a, out string b)
     {
         a = "HelloWorld";

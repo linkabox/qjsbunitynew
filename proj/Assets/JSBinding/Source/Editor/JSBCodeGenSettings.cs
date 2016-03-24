@@ -53,7 +53,6 @@ public static class JSBCodeGenSettings
         //Custom
         
         //mscorlib
-		typeof (List<>),
         typeof (IEnumerator),
         typeof (ICollection),
         typeof (IDisposable),

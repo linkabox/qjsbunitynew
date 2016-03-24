@@ -1,6 +1,7 @@
 using SharpKit.JavaScript;
 using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 
 
 public class MiscTest : MonoBehaviour {
@@ -9,6 +10,8 @@ public class MiscTest : MonoBehaviour {
 	void Start () {
 //        PerTest.test123(1.5, 1.3);
         PerTest.testString(null, "abc");
+		PerTest.testArray (new int[]{11,99,231});
+		PerTest.testList (new List<int>{66,77,88});
 
 		var config = Resources.Load ("shopconfig");
 		Debug.LogError ("Resources.Load: "+ config);
