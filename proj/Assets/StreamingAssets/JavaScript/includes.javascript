@@ -52,21 +52,21 @@ CS.require("Manual/MissingClasses");
 
 printObj = function (obj, name)
 {
-    var s = name + "\n";
+    var s = "name: " + name + "\n";
     for (var k in obj) {
         if (obj.hasOwnProperty(k))
             s += k + ": " + obj[k] + "\n";
     }
-    print(s);
+    printError(s);
 }
 
 printArr = function (obj, name)
 {
-    var s = name + "\n";
+    var s = "name: " + name + "\n";
     for (var i = 0; i < obj.length; i++) {
         s += "[" + i + "] " + obj[i] + "\n";
     }
-    print(s);
+    printError(s);
 }
 
 
